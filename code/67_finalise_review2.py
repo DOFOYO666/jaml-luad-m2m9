@@ -14,6 +14,7 @@ Run: python scripts/67_finalise_review2.py
 import hashlib
 import io
 import os
+import re
 import sys
 import zipfile
 
@@ -74,31 +75,45 @@ def archive_facts():
 
 
 def update_facts():
+    """Refresh the archival facts in the review documents.
+
+    Matching is **by shape, not by the previous literal value**: hardcoding "the string that is
+    there now" is what let these numbers go stale twice (the refresh script only knew how to
+    replace the wording it had written itself). Every pattern below must match exactly once.
+    """
     log("[1] refresh the Supplementary Material 17 facts (recomputed from the archive)")
     f = archive_facts()
-    core_old = ("125 个文件：79 个 C 盘工作区脚本 + 19 个 D 盘 M4/M8 脚本 + 10 个派生结果表 "
-                "+ 16 个补充数据表 + `MANIFEST.txt`；604,458 B；sha256[:16] = `ec1107c39f5daca2`")
+    core = (r"\d+ 个文件：\d+ 个 C 盘工作区脚本 \+ \d+ 个 D 盘 M4/M8 脚本 \+ \d+ 个派生结果表 "
+            r"\+ \d+ 个补充数据表 \+ `MANIFEST\.txt`；[\d,]+ B；sha256\[:16\] = `[0-9a-f]{16}`")
     core_new = ("%d 个文件：%d 个 C 盘工作区脚本 + %d 个 D 盘 M4/M8 脚本 + %d 个派生结果表 "
                 "+ %d 个补充数据表 + `MANIFEST.txt`；%d B；sha256[:16] = `%s`"
                 % (f["n"], f["c"], f["d"], f["res"], f["sup"], f["size"], f["short"]))
 
-    for doc in (DOC_README, DOC_REVIEW, DOC_JOURNAL):
-        sub_once(doc, core_old, core_new, os.path.basename(doc) + " :: archive facts")
-
-    sub_once(DOC_REVIEW, "（新增，125 个文件）", "（新增，%d 个文件）" % f["n"],
-             "review doc :: tree listing")
-    sub_once(DOC_REVIEW,
-             "| 文件数 | **125**（79 C 盘脚本 + 19 D 盘脚本 + 10 派生结果表 + 16 补充数据表 + `MANIFEST.txt`） |",
-             "| 文件数 | **%d**（%d C 盘脚本 + %d D 盘脚本 + %d 派生结果表 + %d 补充数据表 + `MANIFEST.txt`） |"
-             % (f["n"], f["c"], f["d"], f["res"], f["sup"]),
-             "review doc :: fact table row 1")
-    sub_once(DOC_REVIEW, "| 字节数 | **604,458** |", "| 字节数 | **%d** |" % f["size"],
-             "review doc :: fact table row 2")
-    sub_once(DOC_REVIEW,
-             "| sha256 | `ec1107c39f5daca2323f0ebbb87e84e724049c9249c6d0d10edb0b4905e637e3`"
-             "（前 16 位 `ec1107c39f5daca2`） |",
-             "| sha256 | `%s`（前 16 位 `%s`） |" % (f["sha"], f["short"]),
-             "review doc :: fact table row 3")
+    edits = [
+        (DOC_README, core, core_new, "README :: archive facts"),
+        (DOC_REVIEW, core, core_new, "review doc :: archive facts"),
+        (DOC_JOURNAL, core, core_new, "journal doc :: archive facts"),
+        (DOC_REVIEW, r"（新增，\d+ 个文件）", "（新增，%d 个文件）" % f["n"], "review doc :: tree listing"),
+        (DOC_REVIEW, r"\| 文件数 \| \*\*\d+\*\*（[^|]*） \|",
+         "| 文件数 | **%d**（%d C 盘脚本 + %d D 盘脚本 + %d 派生结果表 + %d 补充数据表 + `MANIFEST.txt`） |"
+         % (f["n"], f["c"], f["d"], f["res"], f["sup"]), "review doc :: fact table row 1"),
+        (DOC_REVIEW, r"\| 字节数 \| \*\*[\d,]+\*\* \|", "| 字节数 | **%d** |" % f["size"],
+         "review doc :: fact table row 2"),
+        (DOC_REVIEW, r"\| sha256 \| `[0-9a-f]{64}`（前 16 位 `[0-9a-f]{16}`） \|",
+         "| sha256 | `%s`（前 16 位 `%s`） |" % (f["sha"], f["short"]),
+         "review doc :: fact table row 3"),
+    ]
+    for path, pattern, repl, label in edits:
+        t = io.open(path, encoding="utf-8").read()
+        hits = re.findall(pattern, t)
+        if len(hits) == 1 and hits[0] == repl:
+            log("  ..  already current: " + label)
+            continue
+        if len(hits) != 1:
+            raise SystemExit("[%s] pattern matched %d times (expected 1)" % (label, len(hits)))
+        # lambda replacement: never let re.sub interpret backslashes in the new text
+        io.open(path, "w", encoding="utf-8").write(re.sub(pattern, lambda m: repl, t, count=1))
+        log("  OK  " + label)
     log("  facts now: %d files (%d C + %d D + %d results + %d supplementary + MANIFEST), "
         "%d B, sha256[:16] = %s" % (f["n"], f["c"], f["d"], f["res"], f["sup"], f["size"], f["short"]))
 

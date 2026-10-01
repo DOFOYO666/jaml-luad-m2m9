@@ -10,6 +10,7 @@ Run:  python scripts/59_build_review2_supplementary.py
 import csv
 import gzip
 import hashlib
+import io
 import os
 import shutil
 import sys
@@ -143,9 +144,16 @@ def build_af11():
                 manifest.append("  04_Supplementary/" + fn)
         z.writestr("MANIFEST.txt", "\n".join(manifest) + "\n")
     size = os.path.getsize(out)
-    h = hashlib.sha256(open(out, "rb").read()).hexdigest()[:16]
+    full = hashlib.sha256(open(out, "rb").read()).hexdigest()
+    h = full[:16]
+    # The sidecar is the authoritative place for the checksum: keep it generated here so it can
+    # never drift from the archive it describes (it had drifted two rounds behind when written
+    # by hand).
+    io.open(out.replace(".zip", "_SHA256.txt"), "w", encoding="utf-8").write(
+        "%s  %s\n%d bytes\n" % (full, os.path.basename(out), size))
     print("wrote %s (%d bytes, sha256[:16]=%s, %d code files: %d C + %d D)"
           % (out, size, h, len(members) + len(d_members), len(members), len(d_members)))
+    print("  checksum sidecar: %s" % os.path.basename(out.replace(".zip", "_SHA256.txt")))
 
 
 if __name__ == "__main__":
