@@ -56,6 +56,11 @@ asserts the recomputed permutation distribution equals the recorded one before w
 research data; if you would prefer them under CC BY 4.0, or prefer a different code licence,
 change `LICENSE` before publishing the archive — the choice is the authors'.
 
+The licence covers only what this release authors: the analysis scripts and the derived result
+tables. The public datasets analysed here (GSE131907, GSE127465, TCGA-LUAD, the OneK1K
+single-cell eQTL study, DepMap and the GWAS/eQTL summary statistics) keep the terms of their own
+repositories; they are neither redistributed nor relicensed by this licence.
+
 ## Citation
 
 See `CITATION.cff`. A DOI is minted from this archive (Zenodo) and quoted in the manuscript's
