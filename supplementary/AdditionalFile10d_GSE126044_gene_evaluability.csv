@@ -1,0 +1,28 @@
+﻿"# Additional file 10d. Gene evaluability of GSE126044 (NSCLC, anti-PD-1, 16 samples). The matrix carries 18745 gene symbols; GSE126044 uses legacy annotation, in which JAML is AMICA1."
+# source: rawdata/icb/GSE126044/GSE126044_counts.txt.gz ; script: scripts/57_check_gse126044_genes.py
+candidate_locus,symbols_tried,present_in_GSE126044
+JAML,JAML|AMICA1,no
+FUBP1,FUBP1,yes
+MAP4K4,MAP4K4,yes
+NUMBL,NUMBL,yes
+PARVA,PARVA,yes
+IREB2,IREB2,yes
+RPS6KA2,RPS6KA2,yes
+EID1,EID1,yes
+HYKK,HYKK|AGPHD1,yes
+STMN3,STMN3,yes
+GALK2,GALK2,yes
+RNASET2,RNASET2,yes
+DNAJA4,DNAJA4,yes
+SECISBP2L,SECISBP2L,yes
+RAB31,RAB31,yes
+CMIP,CMIP,yes
+HLA-C,HLA-C,yes
+RAB4B,RAB4B,yes
+ZNRD1ASP,ZNRD1ASP,no
+CTC-490E21.14,CTC-490E21.14,no
+RP1-167A14.3,RP1-167A14.3,no
+RP11-514O12.4,RP11-514O12.4,no
+
+# summary,candidate loci present: 17 of 22,
+# note,"JAML/AMICA1 is absent, so GSE126044 could not be analysed for the gene of interest",

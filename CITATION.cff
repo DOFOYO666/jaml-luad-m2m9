@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the manuscript and this archive."
+title: "Compartmentally separated JAML and CXADR in lung adenocarcinoma: myeloid-dominant expression, and ID2 as the only noise-candidate regulator"
+version: 1.0.0
+date-released: 2026-10-01
+license: MIT
+type: software
+authors:
+  - family-names: Liu
+    given-names: Huayong
+    orcid: "https://orcid.org/0009-0007-8106-0425"
+    affiliation: "Department of Pulmonary and Critical Care Medicine, Shenzhen Nanshan District People's Hospital (Shenzhen University Affiliated Nanshan Hospital)"
+  - family-names: Gong
+    given-names: Xuefang
+  - family-names: Xiong
+    given-names: Bo
+  - family-names: Wang
+    given-names: Jiadun
+  - family-names: Tao
+    given-names: Chunyan
+  - family-names: Peng
+    given-names: Zhuoming
+  - family-names: Chen
+    given-names: Jiming
+keywords:
+  - JAML
+  - AMICA1
+  - CXADR
+  - lung adenocarcinoma
+  - single-cell RNA sequencing
+  - deconvolution
+  - transcription factor perturbation
+  - CellOracle
+repository-code: "TO BE COMPLETED WHEN THE REPOSITORY URL IS KNOWN"

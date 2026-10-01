@@ -1,0 +1,16 @@
+﻿# Additional file 10c. Power analysis for the checkpoint-blockade cohort (GSE135222).
+# n = 27, 21 events; minimum detectable hazard ratio at 80% power, alpha = 0.05 two-sided.
+# source: results\reviewer_R3_M5_power.json
+{
+ "n": 27,
+ "events": 21,
+ "group_high": 13,
+ "group_low": 14,
+ "observed_HR": 0.9365716521251489,
+ "observed_HR_CI_low": 0.39608296879853905,
+ "observed_HR_CI_high": 2.2146028197707914,
+ "cox_p": 0.8813633059990847,
+ "logrank_p": 0.8810437821458718,
+ "min_detectable_HR_80power": 3.3992387781855955,
+ "method": "Schoenfeld 公式反解 HR；事件数 21、分组比例 0.481"
+}

@@ -1,0 +1,20 @@
+﻿# Additional file 1. Alignment verification for the independent replication dataset (GSE127465).
+# Per-cell mitochondrial read fraction vs metadata (Spearman rho), marker-compartment checks, matrix structure, Total counts caveat, independent re-implementation check.
+# source: BMCCancer投稿\05_Supplementary\Additional file 12 - GSE127465 alignment verification.csv
+# Additional file 12. GSE127465 alignment verification.
+Item,Value,Notes / source
+Dataset,"GSE127465 (Zilionis 2019, NSCLC; 54,773 cells)",source GEO accession GSE127465
+Matrix file,GSE127465_human_counts_normalized_54773x41861.mtx.gz,"528,303,938 bytes; MatrixMarket coordinate; header '54773 41861 44663765'"
+Matrix orientation,"rows = cells (54,773), columns = genes (41,861)","Independent replication dataset: GSE127465 (Zilionis 2019, NSCLC; 54,773 cells). Rows = cells, columns = genes in the source MatrixMarket file (verified empirically: in the first 300,000 data lines the column index spans only 1-766 while the row index already spans the full 1-54,773)."
+Non-zero entries read,"44,663,765","equals the nnz declared in the MatrixMarket header (44,663,765)"
+Panel lines matched,"141,577",data lines belonging to the 35-gene panel
+Index range check,"row <= 54773, column <= 41861",both equal the declared dimensions
+Alignment test A (rejected),"Spearman rho = 0.0142 (n = 54,773)",self-computed per-cell total vs metadata 'Total counts' column; NOT used as a criterion because the column's definition could not be established (see limitations)
+Alignment test B (primary criterion),"Spearman rho = 1.0000 (n = 54,773)",self-computed per-cell mitochondrial fraction vs metadata 'Percent counts from mitochondrial genes' (37 MT- genes); a per-cell ratio can only reach rho = 1.0000 if the row order of the metadata and of the matrix are identical
+Marker direction check: CD3E,bT cells: 0.2855 vs max of comparison groups 0.1414 (ratio 2.02),comparison scope = all other groups
+Marker direction check: SFTPC,Type II cells: 17.4858 vs max of comparison groups 0.1076 (ratio 162.54),comparison scope = all other groups
+Marker direction check: PECAM1,Endothelial cells: 3.6736 vs max of comparison groups 0.8229 (ratio 4.46),comparison scope = all other groups
+Marker direction check: COL1A1,Fibroblasts: 57.8124 vs max of comparison groups 7.6820 (ratio 7.53),comparison scope = all other groups
+Marker direction check: LYZ,tMoMacDC: 11.3314 vs max of comparison groups 0.5743 (ratio 19.73),"comparison scope = ['T cells', 'B cells', 'NK cells', 'Type II cells', 'Club cells', 'Ciliated cells']"
+Independent re-implementation,"102 cells compared, 0 mismatches","second implementation (column-index ordered scan with early stop, reporting absolute positive-cell counts) reproduced the first implementation cell-for-cell"
+Apparent coincidence resolved,JAML and CXADR share identical positive-cell percentages in Endothelial cells and Fibroblasts,"absolute counts show 4/535 and 3/585 for both genes; a genuine coincidence, not an index error"
