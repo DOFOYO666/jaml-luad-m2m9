@@ -327,8 +327,12 @@ def make_tarball():
                 if any(s in p for s in skip):
                     continue
                 t.add(p, arcname=os.path.join(os.path.basename(REL), os.path.relpath(p, REL)))
+    digest = sha256(tar)
+    io.open(tar + ".sha256", "w", encoding="utf-8").write(
+        "%s  %s\n" % (digest, os.path.basename(tar)))
     log("  wrote %s (%.1f MB)" % (os.path.basename(tar), os.path.getsize(tar) / 1e6))
-    log("  sha256 %s" % sha256(tar))
+    log("  sha256 %s" % digest)
+    log("  checksum also written to %s.sha256 (Zenodo direct upload verifies this)" % os.path.basename(tar))
     return tar
 
 
