@@ -288,13 +288,20 @@ def do_push(url, proxy=None):
     else:
         log(OK + "user.email 已是 %s（未改动）" % r.stdout.strip())
 
-    has = run([_g(), "remote"]).stdout.split()
+    # 注意：必须带 cwd=REPO —— 否则在非仓库目录里 `git remote` 会失败并返回空，
+    # 脚本就会误判"没有 remote"而去 add，撞上 "remote origin already exists."（实测踩过）。
+    has = run([_g(), "remote"], cwd=REPO).stdout.split()
     if has:
         run([_g(), "remote", "set-url", "origin", url], cwd=REPO, check=True)
         log(OK + "origin 地址已更新为 %s" % url)
     else:
-        run([_g(), "remote", "add", "origin", url], cwd=REPO, check=True)
-        log(OK + "已添加 origin = %s" % url)
+        r = run([_g(), "remote", "add", "origin", url], cwd=REPO)
+        if r.returncode != 0 and "already exists" in (r.stderr or r.stdout or ""):
+            # 双保险：万一还是判定错了，也不要中止，直接改地址
+            run([_g(), "remote", "set-url", "origin", url], cwd=REPO, check=True)
+            log(OK + "origin 已存在，改为更新地址 = %s" % url)
+        else:
+            log(OK + "已添加 origin = %s" % url)
 
     log("      → 切到 main 分支并推送（首次会要求认证：用户名=GitHub 用户名，密码=粘贴 PAT）")
     run([_g(), "branch", "-M", "main"], cwd=REPO, check=True)
