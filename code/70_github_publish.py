@@ -21,14 +21,59 @@
 """
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 
-sys.stdout.reconfigure(encoding="utf-8")
+
+def _init_console():
+    """Windows 控制台不要强行把 stdout 改成 UTF-8。
+
+    PEP 528 已让中文在控制台正确显示；强行改编码反而会让 5.1 的控制台把 UTF-8 字节
+    按 GBK 解码，显示成"鍙戝竷鍓嶈嚜妗€"这类乱码（实测）。
+    非 Windows（本项目的沙箱 bash）才设 UTF-8。
+    """
+    try:
+        if os.name == "nt":
+            sys.stdout.reconfigure(errors="replace")
+        else:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+_init_console()
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO = os.path.join(BASE, "JAML_M2M9_code_release")
 PY = sys.executable
+
+GIT_CANDIDATES = [
+    r"C:\Users\86159\.workbuddy\vendor\PortableGit\cmd\git.exe",
+    r"C:\Users\86159\.workbuddy\vendor\PortableGit\mingw64\bin\git.exe",
+    r"C:\Program Files\Git\cmd\git.exe",
+    r"C:\Program Files (x86)\Git\cmd\git.exe",
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Git", "cmd", "git.exe"),
+]
+
+
+def find_git():
+    """返回 (git 可执行文件, 来源说明)。
+
+    本机**没有装 Git for Windows**，git 来自 WorkBuddy 自带的 PortableGit，它的目录不在
+    PATH 里 —— 所以在 PowerShell 窗口里敲 `git` 会直接返回 9009（找不到命令）。
+    这里解析出绝对路径，后面所有 git 调用都用它。
+    """
+    p = shutil.which("git")
+    if p:
+        return p, "PATH"
+    for c in GIT_CANDIDATES:
+        if c and os.path.isfile(c):
+            return c, "绝对路径（不在 PATH 里）"
+    return None, "未找到"
+
+
+GIT, GIT_SOURCE = find_git()
 
 GIT_NAME = "Huayong Liu"
 GIT_EMAIL = "xingxinghuoshu@163.com"
@@ -40,23 +85,43 @@ def log(*a):
     print(*a, flush=True)
 
 
+def _g():
+    """git 可执行文件；找不到时退回裸 "git"（由 run() 给出友好提示）。"""
+    return GIT or "git"
+
+
+class _Missing:
+    """占位返回值：让调用方按 returncode != 0 处理，而不是抛出 FileNotFoundError 堆栈。"""
+
+    returncode = 127
+    stdout = ""
+    stderr = ""
+
+
 def run(args, cwd=None, capture=True, check=False):
-    r = subprocess.run(args, cwd=cwd, capture_output=capture, text=True)
+    try:
+        r = subprocess.run(args, cwd=cwd, capture_output=capture, text=True)
+    except FileNotFoundError:
+        r = _Missing()
+        r.stderr = "找不到可执行文件：%s" % args[0]
+        log(WARN + r.stderr + "（见自检 [1] 提示）")
     if check and r.returncode != 0:
-        raise SystemExit("命令失败：%s\n%s" % (" ".join(args), (r.stderr or r.stdout or "").strip()[:400]))
+        raise SystemExit("命令失败：%s\n%s"
+                         % (" ".join(str(a) for a in args),
+                            (r.stderr or r.stdout or "").strip()[:400]))
     return r
 
 
 def git_ok():
     try:
-        run(["git", "--version"], check=True)
+        run([_g(), "--version"], check=True)
         return True
     except Exception:
         return False
 
 
 def current_branch():
-    r = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=REPO)
+    r = run([_g(), "rev-parse", "--abbrev-ref", "HEAD"], cwd=REPO)
     return r.stdout.strip() if r.returncode == 0 else "?"
 
 
@@ -67,14 +132,17 @@ def do_check():
     log("=" * 78)
 
     log("\n[1] 本机工具")
-    if git_ok():
-        log(OK + "git 已安装：%s" % run(["git", "--version"]).stdout.strip())
+    log(OK + "python : %s" % sys.executable)
+    if GIT:
+        ver = run([_g(), "--version"]).stdout.strip()
+        log(OK + "git    : %s  [%s]  %s" % (GIT, GIT_SOURCE, ver))
     else:
-        log(BAD + "git 未安装 —— 先装 Git for Windows：https://git-scm.com/download/win")
+        log(BAD + "git    : 未找到 —— 装一个 Git for Windows（https://git-scm.com/download/win），"
+                 "或在本机重新生成发布树后重试")
 
     log("\n[2] git 全局身份（提交时会用）")
-    name = run(["git", "config", "--global", "user.name"]).stdout.strip()
-    mail = run(["git", "config", "--global", "user.email"]).stdout.strip()
+    name = run([_g(), "config", "--global", "user.name"]).stdout.strip()
+    mail = run([_g(), "config", "--global", "user.email"]).stdout.strip()
     log((OK if name else WARN) + "user.name  = %s" % (name or "未配置（步骤 2 会自动配）"))
     log((OK if mail else WARN) + "user.email = %s" % (mail or "未配置（步骤 2 会自动配）"))
 
@@ -88,8 +156,8 @@ def do_check():
     else:
         log(BAD + "还没有 .git —— 先跑 python scripts/66_release_code.py")
         return
-    head = run(["git", "log", "--oneline", "-1"], cwd=REPO).stdout.strip()
-    tracked = run(["git", "ls-files"], cwd=REPO).stdout.splitlines()
+    head = run([_g(), "log", "--oneline", "-1"], cwd=REPO).stdout.strip()
+    tracked = run([_g(), "ls-files"], cwd=REPO).stdout.splitlines()
     log(OK + "最新提交：%s" % head)
     log(OK + "跟踪文件：%d 个" % len(tracked))
     bad = [l for l in tracked if l.startswith("_superseded/")]
@@ -99,7 +167,7 @@ def do_check():
         % (open(ls, encoding="utf-8").read().strip()[:24] + "…" if os.path.exists(ls) else "缺（跑 66 生成）"))
 
     log("\n[4] 远程仓库")
-    rem = run(["git", "remote", "-v"], cwd=REPO).stdout.strip()
+    rem = run([_g(), "remote", "-v"], cwd=REPO).stdout.strip()
     if rem:
         log(OK + "已配置 remote：")
         for line in rem.splitlines():
@@ -125,30 +193,30 @@ def do_push(url):
     log("步骤 2：配置身份 → 加 remote → 切到 main → 推送")
     log("=" * 78)
 
-    r = run(["git", "config", "--global", "user.name"])
+    r = run([_g(), "config", "--global", "user.name"])
     if not r.stdout.strip():
-        run(["git", "config", "--global", "user.name", GIT_NAME], check=True)
+        run([_g(), "config", "--global", "user.name", GIT_NAME], check=True)
         log(OK + "已设置 user.name = %s" % GIT_NAME)
     else:
         log(OK + "user.name 已是 %s（未改动）" % r.stdout.strip())
-    r = run(["git", "config", "--global", "user.email"])
+    r = run([_g(), "config", "--global", "user.email"])
     if not r.stdout.strip():
-        run(["git", "config", "--global", "user.email", GIT_EMAIL], check=True)
+        run([_g(), "config", "--global", "user.email", GIT_EMAIL], check=True)
         log(OK + "已设置 user.email = %s" % GIT_EMAIL)
     else:
         log(OK + "user.email 已是 %s（未改动）" % r.stdout.strip())
 
-    has = run(["git", "remote"]).stdout.split()
+    has = run([_g(), "remote"]).stdout.split()
     if has:
-        run(["git", "remote", "set-url", "origin", url], cwd=REPO, check=True)
+        run([_g(), "remote", "set-url", "origin", url], cwd=REPO, check=True)
         log(OK + "origin 地址已更新为 %s" % url)
     else:
-        run(["git", "remote", "add", "origin", url], cwd=REPO, check=True)
+        run([_g(), "remote", "add", "origin", url], cwd=REPO, check=True)
         log(OK + "已添加 origin = %s" % url)
 
     log("      → 切到 main 分支并推送（首次会要求认证：用户名=GitHub 用户名，密码=粘贴 PAT）")
-    run(["git", "branch", "-M", "main"], cwd=REPO, check=True)
-    r = subprocess.run(["git", "push", "-u", "origin", "main"], cwd=REPO)
+    run([_g(), "branch", "-M", "main"], cwd=REPO, check=True)
+    r = subprocess.run([_g(), "push", "-u", "origin", "main"], cwd=REPO)
 
     if r.returncode != 0:
         log("\n" + BAD + "推送失败。按下面三条自查：")
@@ -157,8 +225,8 @@ def do_push(url):
         log("      3. 报 'remote origin already exists' / 'rejected' → 建仓时勾了 README，请删掉该仓库重建一个空仓库")
         raise SystemExit(1)
 
-    local = run(["git", "rev-parse", "HEAD"], cwd=REPO).stdout.strip()
-    remote = run(["git", "ls-remote", "--heads", "origin", "main"]).stdout.strip()
+    local = run([_g(), "rev-parse", "HEAD"], cwd=REPO).stdout.strip()
+    remote = run([_g(), "ls-remote", "--heads", "origin", "main"]).stdout.strip()
     ok = remote.startswith(local)
     log("\n" + (OK if ok else WARN) + "本地 HEAD = %s" % local[:12])
     log((OK if ok else WARN) + "远程 main = %s" % (remote.split()[0][:12] if remote else "(读不到)"))
@@ -173,14 +241,14 @@ def do_push(url):
 def do_record_only(url):
     log("把仓库地址写入发布元数据（CITATION.cff / README），并推送该更新")
     run([PY, os.path.join(BASE, "scripts", "66_release_code.py"), "--url", url], check=True)
-    run(["git", "add", "-A"], cwd=REPO, check=True)
-    r = run(["git", "-c", "user.name=%s" % GIT_NAME, "-c", "user.email=%s" % GIT_EMAIL,
+    run([_g(), "add", "-A"], cwd=REPO, check=True)
+    r = run([_g(), "-c", "user.name=%s" % GIT_NAME, "-c", "user.email=%s" % GIT_EMAIL,
              "commit", "-q", "-m", "Record repository URL in metadata"], cwd=REPO)
     if r.returncode != 0:
         log(WARN + "没有需要提交的改动（可能已记录过）")
     else:
         log(OK + "已提交仓库地址")
-    run(["git", "push"], cwd=REPO, check=True)
+    run([_g(), "push"], cwd=REPO, check=True)
     log(OK + "已推送。下一步：Zenodo 开开关 → 发 Release v1.0.0 → 拿 DOI")
 
 
@@ -205,7 +273,7 @@ def do_writeback(url, doi):
             raise SystemExit("这一步失败：%s —— 修好后可只重跑这一条" % label)
 
     log("\n--- 把更新后的发布树推到远程")
-    run(["git", "push"], cwd=REPO, check=True)
+    run([_g(), "push"], cwd=REPO, check=True)
 
     log("\n" + OK + "全部完成。请核对：")
     log("      · M2-M9深化研究稿/manuscript_EN.md 的可用性声明含 %s" % url)
