@@ -314,9 +314,8 @@ def build_en_md():
          "(a) Mean normalized expression (log2(TPM+1)) and positivity for *JAML* and *CXADR* across ten author-annotated cell types in GSE131907 (208,506 cells; LUAD); points are cell-type means and the x-axis is the fraction of positive cells."),
         ("Panel b: *JAML* positivity across CD4-lineage subsets annotated by the authors (`Cell_subtype`).",
          "(b) *JAML* mean expression (bars), annotated with the fraction of positive cells, across the CD4-lineage subsets defined by the authors' `Cell_subtype` labels."),
-        # Figure 2
-        ("Positivity of *JAML* and *CXADR* across eight compartments in GSE127465 (54,773 cells; treatment-naïve NSCLC; Zilionis et al. [8]) compared with GSE131907.",
-         "(a) Positivity of *JAML* and *CXADR* across the eight compartments, with the discovery (GSE131907) and replication (GSE127465; 54,773 cells; treatment-naïve NSCLC; Zilionis et al. [8]) values for the same compartment shown side by side."),
+        # Figure 2 — panel (a) is handled below by a regex, because its text quotes a
+        # citation number that changes whenever the reference list is renumbered.
         ("Horizontal bars are positivity percentages; the discovery and replication values for the same compartment are shown side by side.",
          "(b) The same replication data at the authors' own annotation granularity, separately resolving the key epithelial and myeloid compartments; the note 'few epithelial cells in this dataset' flags the small epithelial compartment discussed in the Limitations. Horizontal bars are positivity percentages."),
         # Figure 7a — the master legend now describes the final network configuration, so the only
@@ -326,6 +325,26 @@ def build_en_md():
     ]
     for old, new in ops:
         t, applied = soft_replace(t, old, new, 1, "legend op")
+
+    # Figure 2, panel (a). Regex rather than a literal string: the op used to hard-code
+    # "Zilionis et al. [8]", which silently stopped matching once the reference list was
+    # renumbered (the script aborted and the JTM file was left stale). Match the number-free
+    # part and carry whatever citation number the master happens to use.
+    fig2 = re.compile(
+        r"Positivity of \*JAML\* and \*CXADR\* across eight compartments in GSE127465 "
+        r"\(54,773 cells; treatment-naïve NSCLC; (Zilionis et al\. \[\d+(?:[–\-]\d+)*\])\) "
+        r"compared with GSE131907\.")
+    if "(a) Positivity of *JAML* and *CXADR* across the eight compartments" in t:
+        log("  ..  already applied: Figure 2 legend (a)")
+    else:
+        t, n_fig2 = fig2.subn(
+            r"(a) Positivity of *JAML* and *CXADR* across the eight compartments, with the discovery "
+            r"(GSE131907) and replication (GSE127465; 54,773 cells; treatment-naïve NSCLC; \1) values "
+            r"for the same compartment shown side by side.",
+            t, count=1)
+        if n_fig2 != 1:
+            raise SystemExit("[Figure 2 legend] regex matched %d times (expected 1)" % n_fig2)
+        log("  OK  Figure 2 legend (a) split out")
 
     assert "Additional file" not in t, "EN -> JTM still contains 'Additional file'"
     log("  headings: " + " | ".join(re.findall(r"(?m)^## (.+)$", t)))
