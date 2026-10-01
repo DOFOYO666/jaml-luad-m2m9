@@ -2,20 +2,20 @@
 """Finalise the second-round review paperwork and wire in a repository DOI.
 
 Modes
-  (default)               refresh the Supplementary Material 17 facts (file count, size,
-                          SHA-256) in the three review documents, now that the archive also
-                          carries the D-drive M4/M8 scripts.
-  --doi X --url Y         replace the "being deposited" placeholder in both masters and in
-                          the JTM manuscript with the real repository URL and DOI, then remind
-                          you which builders to re-run.
+  (default)               recompute the Supplementary Material 17 facts (file count, size,
+                          SHA-256) **from the archive itself** and refresh every place the
+                          review documents quote them.
+  --doi X --url Y         replace the "being deposited" placeholder in both masters with the
+                          real repository URL and DOI, then remind you which builders to re-run.
 
 Run: python scripts/67_finalise_review2.py
      python scripts/67_finalise_review2.py --doi 10.5281/zenodo.1234567 --url https://github.com/me/jaml
 """
+import hashlib
 import io
 import os
-import re
 import sys
+import zipfile
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -26,26 +26,11 @@ EN = os.path.join(PKG, "manuscript_EN.md")
 CN = os.path.join(PKG, "manuscript_CN.md")
 JTM_MD = os.path.join(JTM, "manuscript_JTM.md")
 
-ARCHIVE = ("125 个文件：79 个 C 盘工作区脚本 + 19 个 D 盘 M4/M8 脚本 + 10 个派生结果表 "
-           "+ 16 个补充数据表 + `MANIFEST.txt`；604,458 B；sha256[:16] = `ec1107c39f5daca2`"
-           "（完整值见 `04_Supplementary/AdditionalFile11_code_and_results_SHA256.txt`）")
+ARCHIVE = os.path.join(PKG, "04_Supplementary", "AdditionalFile11_code_and_results.zip")
 
-FACT_OPS = [
-    (os.path.join(PKG, "README_投稿说明.md"),
-     "（100 个文件：73 个 Python 脚本 + 16 个补充数据表 + 10 个派生结果表 + `MANIFEST.txt`；"
-     "494,324 B；sha256[:16] = `bbf06e038548facf`）",
-     "（" + ARCHIVE + "）"),
-    (os.path.join(PKG, "审稿意见与逐条修改说明_第二轮.md"),
-     "（代码与派生结果表压缩包；100 个文件 = 73 个 Python 脚本 + 16 个补充数据表 + "
-     "10 个派生结果表 + 清单；494,324 字节；sha256[:16] = `bbf06e038548facf`）",
-     "（代码与派生结果表压缩包；" + ARCHIVE + "）"),
-    (os.path.join(PKG, "审稿意见与逐条修改说明_第二轮.md"),
-     "AdditionalFile11_code_and_results.zip    （新增，100 个文件）",
-     "AdditionalFile11_code_and_results.zip    （新增，125 个文件）"),
-    (os.path.join(PKG, "投稿期刊推荐.md"),
-     "（100 个文件，494,324 B，sha256[:16] = `bbf06e038548facf`）",
-     "（" + ARCHIVE + "）"),
-]
+DOC_README = os.path.join(PKG, "README_投稿说明.md")
+DOC_REVIEW = os.path.join(PKG, "审稿意见与逐条修改说明_第二轮.md")
+DOC_JOURNAL = os.path.join(PKG, "投稿期刊推荐.md")
 
 PLACEHOLDER_EN = ("An identical archive (release 1.0.0) is being deposited in a public repository; "
                   "its DOI will be quoted here once issued, and the archive remains available from "
@@ -65,15 +50,57 @@ def sub_once(path, old, new, label):
         return
     n = t.count(old)
     if n != 1:
-        raise SystemExit("[%s] matched %d times (expected 1)" % (label, n))
+        raise SystemExit("[%s] matched %d times (expected 1): %r" % (label, n, old[:70]))
     io.open(path, "w", encoding="utf-8").write(t.replace(old, new, 1))
     log("  OK  " + label)
 
 
+def archive_facts():
+    """Recompute everything the review documents quote about Supplementary Material 17."""
+    z = zipfile.ZipFile(ARCHIVE)
+    names = [n for n in z.namelist() if not n.endswith("/")]
+    raw = open(ARCHIVE, "rb").read()
+    f = {
+        "n": len(names),
+        "c": len([n for n in names if n.startswith("scripts/")]),
+        "d": len([n for n in names if n.startswith("scripts_d_workspace/")]),
+        "res": len([n for n in names if n.startswith("results/")]),
+        "sup": len([n for n in names if n.startswith("04_Supplementary/")]),
+        "size": os.path.getsize(ARCHIVE),
+        "sha": hashlib.sha256(raw).hexdigest(),
+    }
+    f["short"] = f["sha"][:16]
+    return f
+
+
 def update_facts():
-    log("[1] refresh the Supplementary Material 17 facts in the review documents")
-    for path, old, new in FACT_OPS:
-        sub_once(path, old, new, os.path.basename(path) + " :: archive facts")
+    log("[1] refresh the Supplementary Material 17 facts (recomputed from the archive)")
+    f = archive_facts()
+    core_old = ("125 个文件：79 个 C 盘工作区脚本 + 19 个 D 盘 M4/M8 脚本 + 10 个派生结果表 "
+                "+ 16 个补充数据表 + `MANIFEST.txt`；604,458 B；sha256[:16] = `ec1107c39f5daca2`")
+    core_new = ("%d 个文件：%d 个 C 盘工作区脚本 + %d 个 D 盘 M4/M8 脚本 + %d 个派生结果表 "
+                "+ %d 个补充数据表 + `MANIFEST.txt`；%d B；sha256[:16] = `%s`"
+                % (f["n"], f["c"], f["d"], f["res"], f["sup"], f["size"], f["short"]))
+
+    for doc in (DOC_README, DOC_REVIEW, DOC_JOURNAL):
+        sub_once(doc, core_old, core_new, os.path.basename(doc) + " :: archive facts")
+
+    sub_once(DOC_REVIEW, "（新增，125 个文件）", "（新增，%d 个文件）" % f["n"],
+             "review doc :: tree listing")
+    sub_once(DOC_REVIEW,
+             "| 文件数 | **125**（79 C 盘脚本 + 19 D 盘脚本 + 10 派生结果表 + 16 补充数据表 + `MANIFEST.txt`） |",
+             "| 文件数 | **%d**（%d C 盘脚本 + %d D 盘脚本 + %d 派生结果表 + %d 补充数据表 + `MANIFEST.txt`） |"
+             % (f["n"], f["c"], f["d"], f["res"], f["sup"]),
+             "review doc :: fact table row 1")
+    sub_once(DOC_REVIEW, "| 字节数 | **604,458** |", "| 字节数 | **%d** |" % f["size"],
+             "review doc :: fact table row 2")
+    sub_once(DOC_REVIEW,
+             "| sha256 | `ec1107c39f5daca2323f0ebbb87e84e724049c9249c6d0d10edb0b4905e637e3`"
+             "（前 16 位 `ec1107c39f5daca2`） |",
+             "| sha256 | `%s`（前 16 位 `%s`） |" % (f["sha"], f["short"]),
+             "review doc :: fact table row 3")
+    log("  facts now: %d files (%d C + %d D + %d results + %d supplementary + MANIFEST), "
+        "%d B, sha256[:16] = %s" % (f["n"], f["c"], f["d"], f["res"], f["sup"], f["size"], f["short"]))
 
 
 def set_doi(doi, url):

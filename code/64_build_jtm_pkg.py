@@ -568,7 +568,7 @@ Figure 1 与 Figure 2 的图注已改写为 (a)/(b) 结构，与合并后的版�
 ## 五、投稿前仍需确认
 
 1. **通讯作者信息**按主稿（BMC Cancer 投稿包）填写：`xingxinghuoshu@163.com`、ORCID `0009-0007-8106-0425`、Tel `+86-15989240414`、`No. 89 Taoyuan Road, Nanshan District, Shenzhen 518000`。如需修改，改 `manuscript_JTM.md` 题名页后重跑 `scripts/65`。
-2. **科室英文名已统一**：原 M2–M9 稿写 "Department of Respiratory Medicine, Shenzhen Nanshan People's Hospital"，与主稿题名页 "Department of Pulmonary and Critical Care Medicine, Shenzhen Nanshan District People's Hospital" 不一致；本包已统一为**主稿写法**，中文稿同步改为"呼吸与危重症医学科"。
+2. **科室英文名已统一并经作者确认**（2026-10-01）：全文一律用 **"Department of Pulmonary and Critical Care Medicine, Shenzhen Nanshan District People's Hospital (Shenzhen University Affiliated Nanshan Hospital)"**，中文稿为"深圳市南山区人民医院（深圳大学附属南山医院）呼吸与危重症医学科"。原 M2–M9 稿的 "Department of Respiratory Medicine, Shenzhen Nanshan People's Hospital" 与"呼吸内科"已全部替换（含本包 Cover letter、代码发布树的 `CITATION.cff` 与 `.zenodo.json`）。
 3. **Cover letter 不写日期**（投稿系统自带）；如需可在首行补。
 
 ---
@@ -580,12 +580,16 @@ Figure 1 与 Figure 2 的图注已改写为 (a)/(b) 结构，与合并后的版�
 ```
 JAML_M2M9_code_release/            发布树（README / DATA_SOURCES / LICENSE(MIT，可改) /
                                    CITATION.cff / .zenodo.json / SHA256SUMS.txt）
-   ├── code/                       79 个 C 盘工作区脚本
-   ├── code/d_workspace/           19 个 D 盘 M4/M8 脚本（同名 18 个，以 D 盘版本为准）
+   ├── code/                       82 个 C 盘工作区脚本
+   ├── code/d_workspace/           20 个 D 盘 M4/M8 脚本（含 m4_fig7_replot.py 等；以 D 盘版本为准）
    ├── results/                    10 个派生结果表 + Crossref 核验记录
    └── supplementary/              Supplementary Material 1–17
-JAML_M2M9_code_release.tar.gz      1.1 MB，sha256 4033d0db…9a416（由 git 提交 83d4f37 产出）
+JAML_M2M9_code_release.tar.gz      约 1.1 MB。**校验值每次重建都会变，请以发布树内的
+                                   `SHA256SUMS.txt` 与重建脚本打印的 sha256 为准，勿从本文件转抄。**
 ```
+
+> 建仓、取 DOI、许可确认的**逐步操作**见 `M2-M9深化研究稿/代码发布与DOI操作手册.md`
+> 与 `M2-M9深化研究稿/MIT许可证确认流程.md`。
 
 **剩余两步需要你的账号**（本机无 GitHub 凭据、无 `gh` CLI，代码不作伪 DOI）：
 

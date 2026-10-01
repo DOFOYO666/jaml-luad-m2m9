@@ -13,7 +13,7 @@ Outputs
   JAML_M2M9_code_release/SHA256SUMS.txt
   (git init + one commit inside the tree)
 
-Then: python scripts/66_set_repo_doi.py --doi 10.5281/zenodo.XXXXXXX --url https://...
+Then: python scripts/67_finalise_review2.py --doi 10.5281/zenodo.XXXXXXX --url https://...
 """
 import datetime
 import hashlib
@@ -277,7 +277,7 @@ def build_tree():
             "LICENSE": MIT.format(year=DATE[:4]),
             "CITATION.cff": CITATION.format(title=TITLE, version=VERSION, date=DATE),
             ".zenodo.json": ZENODO.format(title=TITLE, version=VERSION, date=DATE),
-            ".gitignore": "__pycache__/\n*.pyc\n"}
+            ".gitignore": "__pycache__/\n*.pyc\n_superseded/\n*.bak_*\n"}
     for name, body in docs.items():
         io.open(os.path.join(rel, name), "w", encoding="utf-8").write(body)
         expected.add(name)
@@ -340,6 +340,9 @@ def git_init():
         return
     cmds = [
         ["git", "init", "-q"],
+        # _superseded/ is the on-disk recycling bin for files this build no longer produces; it
+        # must never be published, so untrack it before staging (no-op if it was never tracked).
+        ["git", "rm", "-r", "--cached", "-q", "--ignore-unmatch", "_superseded"],
         ["git", "add", "-A"],
         ["git", "-c", "user.name=Huayong Liu", "-c", "user.email=xingxinghuoshu@163.com",
          "commit", "-q", "-m",
@@ -350,8 +353,12 @@ def git_init():
         if r.returncode != 0:
             log("  git %s -> %s" % (c[1], (r.stderr or r.stdout).strip()[:160]))
             return
-    r = subprocess.run(["git", "log", "--oneline"], cwd=REL, capture_output=True, text=True)
-    log("  git repository initialised: %s" % r.stdout.strip())
+    tracked = subprocess.run(["git", "ls-files"], cwd=REL, capture_output=True, text=True).stdout
+    n_bad = len([l for l in tracked.splitlines() if l.startswith("_superseded/")])
+    if n_bad:
+        log("  WARNING: %d superseded path(s) still tracked - they would be pushed" % n_bad)
+    r = subprocess.run(["git", "log", "--oneline", "-1"], cwd=REL, capture_output=True, text=True)
+    log("  git repository: %d tracked files, head %s" % (len(tracked.splitlines()), r.stdout.strip()))
 
 
 AVAIL_OLD_EN = ("All analysis scripts, the derived result tables underlying every figure and table, "
@@ -391,7 +398,7 @@ def main():
   #     (metadata is pre-filled from .zenodo.json inside the archive)
 
   # 3. write the DOI back into both manuscripts and rebuild the docx:
-  python scripts/66_set_repo_doi.py --doi 10.5281/zenodo.XXXXXXX --url https://github.com/<you>/<repo>
+  python scripts/67_finalise_review2.py --doi 10.5281/zenodo.XXXXXXX --url https://github.com/<you>/<repo>
 """ % (REL, VERSION, os.path.basename(REL) + ".tar.gz"))
 
 
