@@ -116,10 +116,41 @@ def convert(md_path, out_path, cfg):
     st.font.name = latin
     st.font.size = Pt(size)
     st.paragraph_format.space_after = Pt(6)
-    st.paragraph_format.line_spacing = 1.35
+    # JTM/BMC: "Use double-line spacing" for the main manuscript text.
+    st.paragraph_format.line_spacing = 2.0
     for s in d.sections:
         s.top_margin = s.bottom_margin = Cm(2.2)
         s.left_margin = s.right_margin = Cm(2.2)
+
+    # JTM/BMC: "Include line and page numbering".
+    for s in d.sections:
+        _sect_pr = s._sectPr
+        ln = OxmlElement("w:lnNumType")
+        ln.set(qn("w:countBy"), "1")
+        ln.set(qn("w:restart"), "continuous")
+        ln.set(qn("w:distance"), "360")
+        cols = _sect_pr.find(qn("w:cols"))
+        if cols is not None:                      # schema order: lnNumType precedes cols
+            cols.addprevious(ln)
+        else:
+            _sect_pr.append(ln)
+
+        fp = s.footer.paragraphs[0]
+        fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        fp.paragraph_format.line_spacing = 1.0
+        run = fp.add_run()
+        run.font.name = latin
+        run.font.size = Pt(size - 1.0)
+        for tag, attr in (("w:fldChar", ("w:fldCharType", "begin")),
+                          ("w:instrText", ("xml:space", "preserve"))):
+            el = OxmlElement(tag)
+            el.set(qn(attr[0]), attr[1])
+            if tag == "w:instrText":
+                el.text = " PAGE "
+            run._r.append(el)
+        end = OxmlElement("w:fldChar")
+        end.set(qn("w:fldCharType"), "end")
+        run._r.append(end)
 
     i = 0
     first_h1 = True
@@ -144,6 +175,7 @@ def convert(md_path, out_path, cfg):
                     txt = r[ci] if ci < len(r) else ""
                     p = cells[ci].paragraphs[0]
                     p.paragraph_format.space_after = Pt(2)
+                    p.paragraph_format.line_spacing = 1.0
                     add_rich(p, txt, latin, ea, size - 1.0, base_bold=(ri == 0))
             three_line(t)
             d.add_paragraph()

@@ -1,3 +1,4 @@
+# jtm-fontscale x1.55 (JTM 170 mm legibility)
 # -*- coding: utf-8 -*-
 """
 38_gse127465_replication.py — 独立数据集复核：JAML/CXADR 的区室分离
@@ -328,7 +329,7 @@ def main():
            .pivot_table(index="group", columns="gene", values="pct_positive")
            .reindex(sel))
 
-    fig, axes = plt.subplots(1, 2, figsize=(10.8, 4.5),
+    fig, axes = plt.subplots(1, 2, figsize=(10.8, 4.8),
                              gridspec_kw={"width_ratios": [1.1, 1]})
     ax = axes[0]
     y = np.arange(len(piv))
@@ -338,12 +339,12 @@ def main():
     ax.barh(y - h / 2, piv["JAML"].values, height=h, color="#D73027",
             edgecolor="#333", linewidth=0.5, label="JAML (ligand)")
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{c}  (n={int(cnt_maj[mpos[c]]):,})" for c in piv.index], fontsize=7.5)
+    ax.set_yticklabels([f"{c}  (n={int(cnt_maj[mpos[c]]):,})" for c in piv.index], fontsize=11.6)
     ax.invert_yaxis()
     ax.set_xlabel("Positive cells (%)")
     ax.set_title("Independent replication: JAML\u2013CXADR compartmental separation\n"
-                 "GSE127465 (Zilionis 2019, NSCLC, n = 54,773 cells)", fontsize=8.8)
-    ax.legend(frameon=False, fontsize=7.5, loc="center right")
+                 "GSE127465 (Zilionis 2019, NSCLC, n = 54,773 cells)", fontsize=13.6)
+    ax.legend(frameon=False, fontsize=11.6, loc="center right")
     ax.spines[["top", "right"]].set_visible(False)
 
     ax = axes[1]
@@ -366,15 +367,15 @@ def main():
     yy = np.arange(len(labels))
     ax.barh(yy, vals, color=cols, edgecolor="#333", linewidth=0.5)
     for i, vv in enumerate(vals):
-        ax.text(vv + 0.5, i, f"{vv:.1f}", va="center", fontsize=6.4)
+        ax.text(vv + 0.5, i, f"{vv:.1f}", va="center", fontsize=9.9)
     ax.set_yticks(yy)
-    ax.set_yticklabels(labels, fontsize=7.5)
+    ax.set_yticklabels(labels, fontsize=11.6)
     ax.invert_yaxis()
     ax.set_xlabel("Positive cells (%)")
-    ax.set_title("Key compartments (red = JAML, blue = CXADR)", fontsize=8.8)
+    ax.set_title("Key compartments (red = JAML, blue = CXADR)", fontsize=13.6)
     ax.spines[["top", "right"]].set_visible(False)
     ax.text(0.98, 0.02, "few epithelial cells in this dataset",
-            transform=ax.transAxes, ha="right", va="bottom", fontsize=6.4, color="#777")
+            transform=ax.transAxes, ha="right", va="bottom", fontsize=9.9, color="#777")
     fig.tight_layout()
     save_fig(fig, "m8_gse127465_jaml_cxadr")
 
@@ -385,12 +386,12 @@ def main():
                edgecolor="#333", linewidth=0.5)
         for i, (pv, nv) in enumerate(zip(cd4["pct_positive"].values, cd4["n_cells"].values)):
             ax.text(i, pv + 0.5, f"{pv:.1f}%\nn={int(nv)}", ha="center", va="bottom",
-                    fontsize=6.4)
+                    fontsize=9.9)
         ax.set_xticks(range(len(cd4)))
-        ax.set_xticklabels(cd4["group"].values, rotation=25, ha="right", fontsize=7.5)
+        ax.set_xticklabels(cd4["group"].values, rotation=25, ha="right", fontsize=11.6)
         ax.set_ylabel("JAML-positive cells (%)")
         ax.set_ylim(0, max(cd4["pct_positive"].max() * 1.4, 12))
-        ax.set_title("JAML in CD4\u207a T subsets\nGSE127465 (independent dataset)", fontsize=8.8)
+        ax.set_title("JAML in CD4\u207a T subsets\nGSE127465 (independent dataset)", fontsize=13.6)
         ax.spines[["top", "right"]].set_visible(False)
         fig.tight_layout()
         save_fig(fig, "m8_gse127465_cd4_jaml")

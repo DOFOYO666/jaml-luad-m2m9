@@ -1,3 +1,4 @@
+# jtm-fontscale x1.85 (JTM 170 mm legibility)
 # -*- coding: utf-8 -*-
 """M4 三档比对 + 噪声标定。
 
@@ -178,12 +179,12 @@ ax.scatter(x[isnew], y[isnew], s=34, color="#E67E22", marker="^", zorder=3,
 lim = max(x.max(), y.max()) * 1.15
 ax.plot([0, lim], [0, lim], ls="--", color="#ccc", lw=0.8)
 for g in [g for g in REF if g in x.index]:
-    ax.annotate(g, (x[g], y[g]), textcoords="offset points", xytext=(5, 3), fontsize=7)
+    ax.annotate(g, (x[g], y[g]), textcoords="offset points", xytext=(5, 3), fontsize=13.0)
 ax.set_xlabel(f"$|\\Delta$JAML$|$   {a}")
 ax.set_ylabel(f"$|\\Delta$JAML$|$   {b}")
 ax.set_title(f"(B) vs (C): gene-set enlargement\nSpearman ρ = "
-             f"{stat[f'{a}_vs_{b}']['spearman_rho']:.3f}  (n = {len(common)})", fontsize=8.6)
-ax.legend(frameon=False, fontsize=6.8, loc="lower right")
+             f"{stat[f'{a}_vs_{b}']['spearman_rho']:.3f}  (n = {len(common)})", fontsize=15.9)
+ax.legend(frameon=False, fontsize=12.6, loc="lower right")
 ax.spines[["top", "right"]].set_visible(False)
 
 ax = axes[1]
@@ -193,13 +194,13 @@ colors = ["#C0392B" if v > noise_ceiling else "#95A5A6"
 ax.barh(range(len(s2)), s2[f"absJAML_{keys[-1]}"].values, color=colors, height=0.72)
 ax.axvline(noise_ceiling, ls="--", color="#2C3E50", lw=0.9)
 ax.text(noise_ceiling, len(s2) - 1, " paired randomization\n noise ceiling",
-        color="#2C3E50", fontsize=6.4, va="top")
+        color="#2C3E50", fontsize=11.8, va="top")
 ax.set_yticks(range(len(s2)))
-ax.set_yticklabels(s2.index, fontsize=5.4)
+ax.set_yticklabels(s2.index, fontsize=10.0)
 ax.tick_params(axis="y", pad=1)
 ax.set_xlabel(r"$|\Delta$JAML$|$  (run C, bagging = 20)")
 ax.set_title(f"Newly added TFs: {n_above}/{len(new_in_c)} exceed the noise ceiling",
-             fontsize=8.6)
+             fontsize=15.9)
 ax.spines[["top", "right"]].set_visible(False)
 
 fig.tight_layout()

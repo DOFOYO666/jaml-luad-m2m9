@@ -7,13 +7,13 @@ Steps
      lists exactly 3 names) and align the department's English/Chinese name with the
      one already used on the companion submission's title page.
   2. Convert manuscript_EN.md -> JTM投稿_M2M9/manuscript_JTM.md: BMC title page,
-     keywords trimmed to 10, "Additional file N" -> "Supplementary Material M",
-     section order ... Conclusions -> Supplementary material -> Declarations ->
+     10 keywords, BMC reference style,
+     section order ... Conclusions -> Additional files -> Declarations -> Abbreviations ->
      References -> Figure legends -> Tables, and Figure 1 / Figure 2 legends relabelled
      for the merged two-panel figures that are actually supplied.
      The same conversion (with Chinese headings) is applied to manuscript_CN.md.
   3. Merge the 15 figure files into the 9 figures the legends describe (PNG + LZW TIFF, 300 dpi).
-  4. Copy the 17 supplementary files as SupplementaryMaterial01..17 and write the mapping table.
+  4. Copy the 17 additional files as AdditionalFile01..17 and write the mapping table.
   5. Write cover letter, README, build log.
 
 Then: python scripts/65_build_jtm_docx.py
@@ -69,44 +69,8 @@ SM_MAP = [
     ("AdditionalFile11_code_and_results.zip", 17, "analysis code and derived result tables"),
 ]
 
-SM_LIST_EN = """## Supplementary material
-
-The following files are supplied as Supplementary Material. Statistical details are given in the corresponding Methods subsections, and every number quoted in the text is reproduced in these files.
-
-**Supplementary Material 1.** Alignment verification for the independent replication dataset (GSE127465): per-cell mitochondrial read fraction versus metadata (rho = 1.0000, n = 54,773), marker-compartment checks, matrix-structure verification, the note on why the `Total counts` field was not used as a criterion, and the independent reimplementation that reproduced 102/102 compartment counts.
-
-**Supplementary Material 2.** Compartmental positivity and mean expression of *JAML* and *CXADR* in both datasets.
-
-**Supplementary Material 3.** Correlation of *JAML* expression with every deconvolved population: raw, adjusted for global immune content, and adjusted for tumour purity.
-
-**Supplementary Material 4.** Marker-gene control for the adjustment procedure, under each candidate adjustment.
-
-**Supplementary Material 5.** Correlation-profile similarity between *JAML* and 15 marker genes across 39 populations.
-
-**Supplementary Material 6.** TCGA-LUAD expression-survival results for all evaluable genes.
-
-**Supplementary Material 7.** Stage-wise *JAML* expression in TCGA-LUAD.
-
-**Supplementary Material 8.** TF activity in *JAML*-positive versus *JAML*-negative CD4+ T cells and within positive cells, with the permutation negative control and the *PDCD1* positive control. The p and FDR columns of the within-positive median split are degenerate and must not be interpreted; only that contrast's effect sizes are used.
-
-**Supplementary Material 9.** Perturbation results for all candidate transcription factors across the three network configurations.
-
-**Supplementary Material 10.** Paired randomized-network control and the two-criterion classification of candidate regulators.
-
-**Supplementary Material 11.** Cross-module concordance between TF activity and perturbation effects.
-
-**Supplementary Material 12.** DepMap 22Q2 gene-effect summary for *JAML*.
-
-**Supplementary Material 13.** Relative effect size of *ID2* perturbation on *JAML* (per-cell distribution, fraction of mean expression, rank among 3,074 genes).
-
-**Supplementary Material 14.** TCGA-LUAD overall survival for all 18 evaluable genes under four parameterizations.
-
-**Supplementary Material 15.** Power analysis for the checkpoint-blockade cohort (minimum detectable hazard ratio).
-
-**Supplementary Material 16.** Gene evaluability of GSE126044: 17 of the 22 candidate loci are present, while *JAML*/*AMICA1* is absent.
-
-**Supplementary Material 17.** Analysis code and derived result tables (archive), including the machine-readable reference-verification record.
-"""
+SM_LIST_EN = None   # the master already lists the additional files in BMC style
+AVAIL_OLD_EN = AVAIL_NEW_EN = None
 
 SM_LIST_CN = """## \u8865\u5145\u6750\u6599
 
@@ -235,12 +199,6 @@ def soft_replace(text, old, new, expected=1, label=""):
     return text.replace(old, new), True
 
 
-AVAIL_OLD_EN = ("are provided as Additional file 11; that archive will be deposited in a public "
-                "repository with a DOI before publication and remains available from the corresponding "
-                "author on reasonable request in the interim.")
-AVAIL_NEW_EN = ("are provided as Supplementary Material 17. An identical archive (release 1.0.0) is being "
-                "deposited in a public repository; its DOI will be quoted here once issued, and the archive "
-                "remains available from the corresponding author on reasonable request in the interim.")
 AVAIL_OLD_CN = ("\u5747\u4f5c\u4e3a\u9644\u52a0\u6587\u4ef6 11 \u63d0\u4f9b\uff1b\u540c\u4e00\u538b\u7f29"
                 "\u5305\u5c06\u5728\u6295\u7a3f\u524d\u5b58\u5165\u5e26 DOI \u7684\u516c\u5171\u4ed3\u5e93")
 AVAIL_NEW_CN = ("\u5747\u4f5c\u4e3a\u8865\u5145\u6750\u6599 17 \u63d0\u4f9b\u3002\u5185\u5bb9\u76f8\u540c"
@@ -249,20 +207,13 @@ AVAIL_NEW_CN = ("\u5747\u4f5c\u4e3a\u8865\u5145\u6750\u6599 17 \u63d0\u4f9b\u300
 
 def normalize_master_en():
     """Bring the English master to the same conventions as the Chinese one, in place."""
-    log("[2a-0] normalise manuscript_EN.md (supplementary naming, order, availability)")
+    log("[2a-0] check manuscript_EN.md conventions")
     t = io.open(EN, encoding="utf-8").read()
-    if "## Supplementary material" in t:
-        log("  ..  already normalised")
-        return
-    t, _ = soft_replace(t, "; DepMap; target triage", "; DepMap", 1, "EN keywords")
-    t, _ = soft_replace(t, "Additional file 1)", "Supplementary Material 1)", 3, "EN citations")
-    t, _ = soft_replace(t, AVAIL_OLD_EN, AVAIL_NEW_EN, 1, "EN availability")
-    i = t.index("## Additional files")
-    j = t.index("## Declarations")
-    t = t[:i] + SM_LIST_EN + "\n---\n\n" + t[j:]
-    t = _reorder(t, "## Tables", "## Figures", "## Figure legends")
-    io.open(EN, "w", encoding="utf-8").write(t)
-    log("  EN master normalised; headings: " + " | ".join(re.findall(r"(?m)^## (.+)$", t)))
+    # The master is now authored directly in BMC style ("Additional file N", sections in the
+    # order the journal asks for), so this step is a check rather than a conversion.
+    assert "## Additional files" in t, "master is missing the '## Additional files' section"
+    assert "Supplementary Material" not in t, "master still uses 'Supplementary Material'"
+    log("  ..  master already in BMC style; nothing to convert")
 
 
 CN_AVAIL_FINAL = ("\u5747\u4f5c\u4e3a\u8865\u5145\u6750\u6599 17 \u63d0\u4f9b\u3002\u5185\u5bb9\u76f8\u540c\u7684"
@@ -320,8 +271,8 @@ def build_en_md():
          "(b) The same replication data at the authors' own annotation granularity, separately resolving the key epithelial and myeloid compartments; the note 'few epithelial cells in this dataset' flags the small epithelial compartment discussed in the Limitations. Horizontal bars are positivity percentages."),
         # Figure 7a — the master legend now describes the final network configuration, so the only
         # JTM-specific change is the name of the supplementary table it points to (the master calls
-        # it "Additional file 7a", JTM calls it "Supplementary Material 9").
-        ("is in Additional file 7a.", "is in Supplementary Material 9."),
+        # it "Additional file 7a", JTM calls it "Additional file 9").
+        ("is in Additional file 7a.", "is in Additional file 9."),
     ]
     for old, new in ops:
         t, applied = soft_replace(t, old, new, 1, "legend op")
@@ -346,7 +297,7 @@ def build_en_md():
             raise SystemExit("[Figure 2 legend] regex matched %d times (expected 1)" % n_fig2)
         log("  OK  Figure 2 legend (a) split out")
 
-    assert "Additional file" not in t, "EN -> JTM still contains 'Additional file'"
+    assert "Supplementary Material" not in t, "EN -> JTM still contains 'Supplementary Material'"
     log("  headings: " + " | ".join(re.findall(r"(?m)^## (.+)$", t)))
 
     os.makedirs(OUT, exist_ok=True)
@@ -442,7 +393,7 @@ def merge_figures():
 
 # ------------------------------------------------------------------ step 4 --
 def copy_supplementary():
-    log("[4] supplementary files -> Supplementary Material 1..17")
+    log("[4] additional files -> Additional file 1..17")
     dst = os.path.join(OUT, "03_Supplementary")
     os.makedirs(dst, exist_ok=True)
     rows = []
@@ -452,7 +403,7 @@ def copy_supplementary():
             raise SystemExit("missing supplementary file: " + src_name)
         stem, ext = os.path.splitext(src_name)
         stem = re.sub(r"^AdditionalFile\d+[a-d]?_", "", stem)      # drop the legacy prefix
-        new = "SupplementaryMaterial%02d_%s%s" % (num, stem, ext)
+        new = "AdditionalFile%02d_%s%s" % (num, stem, ext)
         shutil.copy2(src, os.path.join(dst, new))
         rows.append((num, new, src_name, desc, os.path.getsize(src)))
         log("  %2d  %s" % (num, new))
@@ -475,7 +426,7 @@ We submit for your consideration our manuscript, "{title}".
 
 **What we do not claim.** *ID2* is a candidate, not a mechanism: the supporting edge is of moderate strength (6.3% of mean *JAML* expression; rank 33 of 3,074 genes by relative effect). The 229 transcription factors flagged by activity inference are not regulators of *JAML*. *JAML* is not a T-cell infiltration marker. No therapeutic claim is made: no protein-level measurement was performed and the interface has not been tested physically. The experimental follow-up we consider warranted — perturbing *ID2* in primary human CD4+ T cells or monocyte-derived cells, and blocking the *JAML*-*CXADR* interface in co-culture — is set out in the Discussion.
 
-All data are public, and all analysis code together with the derived result tables underlying every figure and table is supplied as Supplementary Material 17. No new human participant data were collected. The manuscript is original, is not under consideration elsewhere, and all authors have approved its submission.
+All data are public, and all analysis code together with the derived result tables underlying every figure and table is supplied as Additional file 17. No new human participant data were collected, so no ethical approval was required, and the journal's policies on data availability and on the reporting of observational analyses are met. The authors declare no competing interests. The manuscript is original, is not under consideration elsewhere, and all authors have read and approved its submission.
 
 We hope the work suits *Journal of Translational Medicine* and look forward to your assessment.
 
@@ -506,7 +457,7 @@ def write_docs(sm_rows):
              "- 格式依据：`scripts/61_jtm_style_probe.py`、`scripts/62_jtm_supp_probe.py`（12 篇 JTM 全文 XML）",
              "- 图：9 张（PNG + 300 dpi LZW TIFF）；补充材料：17 个", ""]
     for n, new, old, d, sz in sm_rows:
-        lines.append("- [补充] SupplementaryMaterial%02d  <-  %s  (%.1f KB)" % (n, old, sz / 1024))
+        lines.append("- [additional] AdditionalFile%02d  <-  %s  (%.1f KB)" % (n, old, sz / 1024))
     for name, panels, layout, sb in FIG_PLAN:
         lines.append("- [图] %s  <-  %s  (%s)" % (name, " + ".join(p[0] for p in panels),
                                                  "side-by-side" if layout == "h" else "stacked"))
@@ -534,7 +485,7 @@ README_TMPL = """# 《M2–M9 深化研究》Journal of Translational Medicine �
 | 正文章节 | Introduction → Methods → Results → Discussion → Conclusions | 一致；Limitations 作为独立小节保留 |
 | 参考文献作者 | **> 3 位时列前 3 位 + et al.**（1 篇 JTM 论文 49 条 `element-citation` 中，39 条带 `<etal/>` 者**全部**为 3 名） | 全部条目均按此规则：> 3 位作者列前 3 位 + et al.，作者数 ≤ 3 时完整列出 |
 | 参考文献编号 | Vancouver，按正文首次出现顺序 | 本次修订新增 26 条文献，编号已整体重排；正文引用与文献表**双向对账**通过（无未引用条目、无悬空引用），并逐条经 Crossref DOI 反查 |
-| 补充材料命名 | 一律 **"Supplementary Material N"**（12 篇抽样中 "Additional file" 出现 **0** 次） | "Additional file N" → "Supplementary Material 1–17"，文件按 `SupplementaryMaterialNN_*.csv` 重命名，正文引用同步 |
+| 补充材料命名 | BMC 规定 **"Additional files should be named 'Additional file 1' and so on"**；核到 2025 年 JTM 论文正文即用 "Additional file 1" | 一律 "Additional file N"；文件按 `AdditionalFileNN_*.csv` 命名；每条按"文件名 / 文件格式 / 标题 / 说明"四要素列出 |
 | 后置章节顺序 | Conclusions → Electronic supplementary material → Acknowledgements → Author contributions → Funding → Data availability → Declarations → Abbreviations → References | Declarations 四小标题采用 JTM 原文措辞；References 置于声明之后 |
 | 图 | 图件单独上传、图注随正文 | 15 个图件**合并为图注所述的 9 张图**；图注集中于 References 之后的 "Figure legends" |
 | 表 | 可编辑格式，非图片 | 5 张均为真 Word 三线表 |
@@ -550,7 +501,7 @@ JTM投稿_M2M9/
 ├── 01_Manuscript_JTM.docx   Word 稿（题名页 → 摘要 → 正文 → 声明 → 参考文献 → 图注 → 表）
 ├── Cover_Letter_JTM.md      投稿信（To the Editors，不具名）
 ├── 02_Figures/              Figure1–Figure9（.png + 300 dpi LZW .tiff）
-├── 03_Supplementary/        SupplementaryMaterial01–17
+├── 03_Supplementary/        AdditionalFile01–17
 ├── README_JTM_投稿说明.md    本文件
 └── BUILD_LOG_JTM.md         构建记录
 ```
@@ -605,7 +556,7 @@ JAML_M2M9_code_release/            发布树（README / DATA_SOURCES / LICENSE(M
    ├── code/                       82 个 C 盘工作区脚本
    ├── code/d_workspace/           20 个 D 盘 M4/M8 脚本（含 m4_fig7_replot.py 等；以 D 盘版本为准）
    ├── results/                    10 个派生结果表 + Crossref 核验记录
-   └── supplementary/              Supplementary Material 1–17
+   └── supplementary/              Additional file 1–17
 JAML_M2M9_code_release.tar.gz      约 1.1 MB。**校验值每次重建都会变，请以发布树内的
                                    `SHA256SUMS.txt` 与重建脚本打印的 sha256 为准，勿从本文件转抄。**
 ```

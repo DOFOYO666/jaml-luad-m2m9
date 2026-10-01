@@ -68,7 +68,8 @@ def main():
     # locate headings as whole paragraphs, in order (searching raw text would match
     # "Conclusions." inside the abstract, which precedes the Introduction)
     want = ["Abstract", "1. Introduction", "2. Materials and Methods", "3. Results", "4. Discussion",
-            "5. Limitations", "6. Conclusion", "Supplementary material", "Declarations",
+            "5. Limitations", "6. Conclusion", "Additional files", "Declarations",
+            "Abbreviations",
             "References", "Figure legends", "Tables"]
     flat = [t.strip() for _, t in paras]
     idx = []
@@ -81,10 +82,19 @@ def main():
     check("全部 12 个一级章节齐备且顺序正确", all(i >= 0 for i in idx) and idx == sorted(idx))
 
     print("\n[补充材料]")
-    check("已改名为 Supplementary Material", "Supplementary material" in all_text and "Supplementary Material 1" in all_text)
+    check("已按 BMC 规则命名为 Additional file",
+          "Additional files" in all_text and "Additional file 1" in all_text
+          and "Supplementary Material" not in all_text)
     check("文中无遗留 'Additional file'", "Additional file" not in all_text)
-    check("SM17 已在可用性声明中引用", "Supplementary Material 17" in all_text)
-    check("SM 编号 1–17 连续", all(("Supplementary Material %d." % i) in all_text for i in range(1, 18)))
+    check("Additional file 17 已在可用性声明中引用", "Additional file 17" in all_text)
+    check("Additional file 编号 1–17 连续",
+          all(("Additional file %d**" % i) in all_text or ("Additional file %d " % i) in all_text
+              for i in range(1, 18)))
+    check("含 Abbreviations 节", "## Abbreviations" in all_text)
+    check("含 Acknowledgements 子标题", "Acknowledgements." in all_text)
+    check("数据集已进参考文献（GEO/GDC/DepMap/eQTL/GWAS）",
+          all(x in all_text for x in ["GSE131907", "portal.gdc.cancer.gov", "depmap.org",
+                                      "ebi.ac.uk/eqtl", "ebi.ac.uk/gwas"]))
 
     print("\n[三线表]")
     check("表格数 = 5", len(d.tables) == 5, "实得 %d" % len(d.tables))

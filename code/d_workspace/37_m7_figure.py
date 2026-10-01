@@ -1,3 +1,4 @@
+# jtm-fontscale x1.60 (JTM 170 mm legibility)
 # -*- coding: utf-8 -*-
 """
 37_m7_figure.py — M7 定稿图（从已保存的 CSV 重绘，避免重跑 14 min 的矩阵抽取）
@@ -45,7 +46,7 @@ def main():
     base = float(df["JAML"].quantile(0.25))
     df["pos"] = df["JAML"] > base + 1e-6
 
-    fig, axes = plt.subplots(1, 3, figsize=(11.4, 3.6))
+    fig, axes = plt.subplots(1, 3, figsize=(11.4, 4.0))
 
     # --- (1) 亚型在拟时序上的位置 ---
     ax = axes[0]
@@ -58,7 +59,7 @@ def main():
         b.set_facecolor(cmap(0.25 + 0.6 * i / max(1, len(data) - 1)))
         b.set_edgecolor("#333")
     ax.set_ylabel("Diffusion pseudotime")
-    ax.set_title("CD4\u207a T subsets along pseudotime", fontsize=9)
+    ax.set_title("CD4\u207a T subsets along pseudotime", fontsize=14.4)
     ax.tick_params(axis="x", rotation=30, labelsize=7.5)
 
     # --- (2) JAML 沿拟时序的分箱均值 ---
@@ -69,7 +70,7 @@ def main():
     ax.set_xlabel("Diffusion pseudotime")
     ax.set_ylabel("JAML, scaled (z units)")
     ax.set_title(f"JAML rises along the trajectory\nSpearman \u03c1 = {rho:.3f}, "
-                 f"P = {pval:.1e}, n = {summ['spearman_pseudotime_vs_JAML']['n']:,}", fontsize=9)
+                 f"P = {pval:.1e}, n = {summ['spearman_pseudotime_vs_JAML']['n']:,}", fontsize=14.4)
 
     # --- (3) 亚型层面的均值 ± SEM + 阳性率（替代不可读的散点）---
     ax = axes[2]
@@ -85,12 +86,12 @@ def main():
     ax.axhline(0, ls=":", color="#bbb", lw=0.8)
     for i, (mn, po) in enumerate(zip(means, poss)):
         ax.text(i, mn + sems[i] + 0.012, f"{mn:+.2f}\n{po:.0f}% pos", ha="center",
-                va="bottom", fontsize=6.6)
+                va="bottom", fontsize=10.6)
     ax.set_xticks(range(len(SUB)))
-    ax.set_xticklabels(SUB, rotation=30, ha="right", fontsize=7.5)
+    ax.set_xticklabels(SUB, rotation=30, ha="right", fontsize=12.0)
     ax.set_ylabel("JAML, scaled (z units)")
     ax.set_ylim(min(-0.28, min(means) - 0.06), max(means) + 0.10)
-    ax.set_title("JAML by subset (mean \u00b1 SEM)", fontsize=9)
+    ax.set_title("JAML by subset (mean \u00b1 SEM)", fontsize=14.4)
 
     for a in axes:
         a.spines[["top", "right"]].set_visible(False)

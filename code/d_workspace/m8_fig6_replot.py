@@ -1,3 +1,4 @@
+# jtm-fontscale x1.65 (JTM 170 mm legibility)
 # -*- coding: utf-8 -*-
 """Re-draw Figure 6a (m8_tf_jaml) and Figure 6b (m8_negative_control) with corrected
 in-figure labels, using ONLY the artefacts already saved by m8_tf_activity.py.
@@ -88,7 +89,7 @@ def main():
     log(f"[controls] PDCD1 hit {hit}")
     log(f"  testable {len(testable)}/{len(PDCD1_EXPECTED)} -> {sorted(testable)}")
 
-    fig, axes = plt.subplots(1, 3, figsize=(12.6, 4.3))
+    fig, axes = plt.subplots(1, 3, figsize=(12.6, 4.6))
 
     ax = axes[0]
     d = cj.head(20).iloc[::-1]
@@ -96,11 +97,10 @@ def main():
             color=["#D73027" if r > 0 else "#4575B4" for r in d["rho"]],
             edgecolor="#333", linewidth=0.4)
     ax.set_yticks(range(len(d)))
-    ax.set_yticklabels(d["tf"], fontsize=7)
+    ax.set_yticklabels(d["tf"], fontsize=11.5)
     ax.axvline(0, color="#666", lw=0.6)
-    ax.set_xlabel("Spearman \u03c1 (TF activity vs JAML)")
-    ax.set_title(f"TFs tracking JAML expression\n(top 20 of {len(cj)} by \u03c1; n = {act.shape[1]:,} CD4\u207a T cells)",
-                 fontsize=8.6)
+    ax.set_xlabel(f"Spearman \u03c1 (TF activity vs JAML); n = {act.shape[1]:,} CD4\u207a T cells")
+    ax.set_title(f"TFs tracking JAML expression\n(top 20 of {len(cj)} by \u03c1)", fontsize=11.5)
     ax.spines[["top", "right"]].set_visible(False)
 
     ax = axes[1]
@@ -112,7 +112,7 @@ def main():
                patch_artist=True, boxprops=dict(facecolor="#c9d7ea"), medianprops=dict(color="#333"))
     ax.set_ylabel("TF activity (z)")
     ax.set_title(f"Top {len(top_j)} of {len(gj)} TFs with FDR < 0.05\n"
-                 f"(largest activity difference, JAML-positive vs negative)", fontsize=8.6)
+                 f"(largest JAML-positive vs negative difference)", fontsize=11.5)
     ax.spines[["top", "right"]].set_visible(False)
 
     ax = axes[2]
@@ -121,11 +121,12 @@ def main():
             color=["#D73027" if r > 0 else "#4575B4" for r in sel["diff"]],
             edgecolor="#333", linewidth=0.4)
     ax.set_yticks(range(len(sel)))
-    ax.set_yticklabels(sel["tf"], fontsize=7)
+    ax.set_yticklabels(sel["tf"], fontsize=11.5)
     ax.axvline(0, color="#666", lw=0.6)
-    ax.set_xlabel("\u0394 TF activity (PDCD1-positive \u2212 negative)")
-    ax.set_title(f"Positive control: PDCD1\nrecovered {len(hit)}/{len(testable)} testable "
-                 f"({len(hit)}/{len(PDCD1_EXPECTED)} pre-specified)", fontsize=8.6)
+    ax.set_xlabel(f"\u0394 TF activity (PDCD1-positive \u2212 negative); "
+                  f"{len(hit)}/{len(PDCD1_EXPECTED)} pre-specified")
+    ax.set_title(f"Positive control: PDCD1\nrecovered {len(hit)}/{len(testable)} testable",
+                 fontsize=11.5)
     ax.spines[["top", "right"]].set_visible(False)
 
     fig.tight_layout()
@@ -182,8 +183,8 @@ def main():
     ax.set_xlabel("# TFs with FDR < 0.05")
     ax.set_ylabel("permutations")
     ax.set_title(f"Negative control (gene labels permuted)\n"
-                 f"empirical P < {1.0 / (N_PERM + 1):.3f} ({N_PERM} permutations)", fontsize=8.6)
-    ax.legend(frameon=False, fontsize=7.5)
+                 f"empirical P < {1.0 / (N_PERM + 1):.3f} ({N_PERM} permutations)", fontsize=14.2)
+    ax.legend(frameon=False, fontsize=12.4)
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     for ext, kw in (("png", {}), ("tif", {"pil_kwargs": {"compression": "tiff_lzw"}})):

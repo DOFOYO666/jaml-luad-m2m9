@@ -1,3 +1,4 @@
+# jtm-fontscale x1.25 (JTM 170 mm legibility)
 # -*- coding: utf-8 -*-
 """跨数据集汇总：JAML / CXADR 的区室分布（发现集 vs 独立验证集）
 
@@ -129,7 +130,7 @@ def main():
                   f"比值 {ep/my if my else np.nan:5.2f}")
 
     # ---------------- 图 ----------------
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.8), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(10.4, 5.2), sharey=True)
     handles = None
     for ax, gene, col in zip(axes, ["JAML", "CXADR"], ["#D73027", "#4575B4"]):
         d = out[out["gene"] == gene]
@@ -144,16 +145,16 @@ def main():
                 edgecolor="#333", linewidth=0.5, hatch="//",
                 label="GSE127465 (replication, NSCLC)")
         ax.set_yticks(y)
-        ax.set_yticklabels(piv.index, fontsize=8)
+        ax.set_yticklabels(piv.index, fontsize=10.0)
         ax.invert_yaxis()
         ax.set_xlabel("Positive cells (%)")
-        ax.set_title(f"{gene}", fontsize=10.5)
+        ax.set_title(f"{gene}", fontsize=13.1)
         ax.spines[["top", "right"]].set_visible(False)
         if handles is None:
             handles, labels = ax.get_legend_handles_labels()
     fig.suptitle("JAML\u2013CXADR compartmental separation: discovery vs independent replication",
-                 fontsize=10, y=0.98)
-    fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, fontsize=8)
+                 fontsize=12.5, y=0.98)
+    fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, fontsize=10.0)
     fig.tight_layout(rect=[0, 0.07, 1, 0.94])
     for ext, kw in [("png", {}), ("tif", dict(pil_kwargs={"compression": "tiff_lzw"}))]:
         fig.savefig(os.path.join(FIG, f"cross_dataset_compartment.{ext}"), dpi=300, **kw)
