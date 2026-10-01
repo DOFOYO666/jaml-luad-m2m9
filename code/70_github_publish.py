@@ -237,7 +237,87 @@ def do_verify_tar():
     log("=" * 78)
 
 
+# ------------------------------------------------------------------ final check --
+def do_final_check():
+    """发布后的核对（合并手册第 9、10 步）。
+
+    只用 Python 实现：不依赖 `grep`/`head` —— 那两个命令在 PowerShell 里没有，
+    在中文路径下还容易出编码问题（这也是手册初版会失败的原因之一）。
+    """
+    log("=" * 78)
+    log("发布后核对：DOI 是否写回 + 交付物是否重建 + 许可是否一致")
+    log("=" * 78)
+
+    log("\n[A] 稿件里的仓库地址与 DOI")
+    targets = [("M2-M9深化研究稿/manuscript_EN.md", "英文母稿"),
+               ("M2-M9深化研究稿/manuscript_CN.md", "中文母稿"),
+               ("JTM投稿_M2M9/manuscript_JTM.md", "JTM 稿")]
+    doi_found = None
+    for rel, name in targets:
+        p = os.path.join(BASE, rel)
+        if not os.path.exists(p):
+            log(BAD + "%-8s 找不到 %s" % (name, rel))
+            continue
+        t = open(p, encoding="utf-8").read()
+        i = t.find("10.5281/zenodo.")
+        have_url = "github.com/" in t
+        if i == -1:
+            log(WARN + "%-8s 还没有 DOI（说明 --writeback 尚未跑：此时稿件里还是"
+                       "'正存入公共仓库…'的旧话）" % name)
+        else:
+            doi_found = t[i:i + 60].split()[0].rstrip(").,;，。")
+            log(OK + "%-8s DOI = %s   仓库地址 = %s"
+                % (name, doi_found, "已写入" if have_url else "未见"))
+
+    log("\n[B] 四个交付物是否刚重建过（时间戳应为刚才那一刻）")
+    import datetime
+    arts = [("M2-M9深化研究稿/01_Manuscript_EN.docx", "英文母稿 Word"),
+            ("M2-M9深化研究稿/01_Manuscript_CN.docx", "中文母稿 Word"),
+            ("JTM投稿_M2M9/01_Manuscript_JTM.docx", "JTM Word 稿"),
+            ("JTM投稿_M2M9/manuscript_JTM.md", "JTM Markdown")]
+    for rel, name in arts:
+        p = os.path.join(BASE, rel)
+        if os.path.exists(p):
+            mt = datetime.datetime.fromtimestamp(os.path.getmtime(p))
+            log(OK + "%-14s %s" % (name, mt.strftime("%Y-%m-%d %H:%M:%S")))
+        else:
+            log(BAD + "%-14s 不存在：%s" % (name, rel))
+
+    log("\n[C] 许可三处是否一致")
+    def first_line(p):
+        try:
+            return open(p, encoding="utf-8").read().splitlines()[0].strip()
+        except Exception:
+            return "(读不到)"
+
+    def find_line(p, needle):
+        try:
+            for line in open(p, encoding="utf-8").read().splitlines():
+                if needle in line:
+                    return line.strip()
+        except Exception:
+            pass
+        return "(未找到)"
+
+    a = first_line(os.path.join(REPO, "LICENSE"))
+    b = find_line(os.path.join(REPO, "CITATION.cff"), "license:")
+    c = find_line(os.path.join(REPO, ".zenodo.json"), "license")
+    d = find_line(os.path.join(REPO, "LICENSE"), "Copyright")
+    log(OK + "LICENSE      : %s" % a)
+    log(OK + "CITATION.cff : %s" % b)
+    log(OK + ".zenodo.json : %s" % c)
+    log(OK + "著作权人     : %s" % d)
+    same = a.lower().startswith("mit") and "MIT" in b and "MIT" in c
+    log("\n" + (OK if same else BAD) + "三处许可一致：%s" % ("是，MIT" if same else "否，请人工确认"))
+    if doi_found:
+        log("\n" + OK + "全部就绪：DOI %s 已写回，可以投稿" % doi_found)
+    log("=" * 78)
+
+
 def main():
+    if "--final-check" in sys.argv or "--license-check" in sys.argv:
+        do_final_check()
+        return
     if "--verify-tar" in sys.argv:
         do_verify_tar()
         return
