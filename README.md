@@ -14,7 +14,10 @@ which claims the data do not support.
 ## Layout
 
 ```
-code/            all analysis scripts (Python and R), in the order they were run
+code/            analysis scripts, in the order they were run
+code/d_workspace/ the M4 (CellOracle) and M8 (decoupleR) pipeline, which was run in a second
+                  workspace; 18 file names exist in both trees and these copies are the ones
+                  that produced the submitted results
 results/         derived result tables underlying the figures and tables
 supplementary/   the 17 supplementary files as submitted (Supplementary Material 1-17)
 README.md        this file

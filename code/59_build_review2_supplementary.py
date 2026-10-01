@@ -20,6 +20,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUP = os.path.join(BASE, "M2-M9深化研究稿", "04_Supplementary")
 SCRIPTS = os.path.join(BASE, "scripts")
+D_SCRIPTS = r"D:\workbuddy工作空间\JAML深度研究\scripts"
 RESULTS = os.path.join(BASE, "results")
 os.makedirs(SUP, exist_ok=True)
 
@@ -86,8 +87,17 @@ def build_af11():
     for root, dirs, files in os.walk(SCRIPTS):
         dirs[:] = [d for d in dirs if d != "__pycache__"]
         for fn in sorted(files):
-            if fn.endswith(".py"):
+            if fn.endswith(".py") and ".bak" not in fn:
                 members.append(os.path.join(root, fn))
+    # The M4/M8 (CellOracle / decoupleR) pipeline lives in the D-drive workspace and must
+    # travel with the archive.  It is kept in a separate folder because 18 file names exist
+    # in both trees; two of them previously differed and the D-drive copies are authoritative.
+    d_members = []
+    for root, dirs, files in os.walk(D_SCRIPTS):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for fn in sorted(files):
+            if fn.endswith(".py"):
+                d_members.append(os.path.join(root, fn))
     derived = [
         ("m2_tcga_jaml_partial_corr.csv", "M2 partial correlations"),
         ("m2_marker_specificity.csv", "M2 adjustment-validity control"),
@@ -101,11 +111,22 @@ def build_af11():
         ("refcheck_m2m9.md", "Crossref DOI verification (human readable)"),
     ]
     manifest = ["Additional file 11 - analysis code and derived result tables",
-                "assembled 2026-10-01", "", "scripts/"]
+                "assembled 2026-10-01",
+                "",
+                "Two script trees are included because the pipeline was run in two workspaces:",
+                "  scripts/              C-drive project workspace (discovery, replication, figures)",
+                "  scripts_d_workspace/  D-drive workspace (M4 CellOracle, M8 decoupleR, M7 pseudotime)",
+                "18 file names appear in both trees; the D-drive copies are authoritative and are",
+                "the ones that produced the submitted results.",
+                "", "scripts/"]
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for m in members:
             z.write(m, "scripts/" + os.path.basename(m))
             manifest.append("  scripts/" + os.path.basename(m))
+        manifest += ["", "scripts_d_workspace/"]
+        for m in d_members:
+            z.write(m, "scripts_d_workspace/" + os.path.basename(m))
+            manifest.append("  scripts_d_workspace/" + os.path.basename(m))
         manifest += ["", "results/"]
         for fn, desc in derived:
             src = os.path.join(RESULTS, fn)
@@ -123,8 +144,8 @@ def build_af11():
         z.writestr("MANIFEST.txt", "\n".join(manifest) + "\n")
     size = os.path.getsize(out)
     h = hashlib.sha256(open(out, "rb").read()).hexdigest()[:16]
-    print("wrote %s (%d bytes, sha256[:16]=%s, %d members)"
-          % (out, size, h, len(members) + len(derived) + 1))
+    print("wrote %s (%d bytes, sha256[:16]=%s, %d code files: %d C + %d D)"
+          % (out, size, h, len(members) + len(d_members), len(members), len(d_members)))
 
 
 if __name__ == "__main__":

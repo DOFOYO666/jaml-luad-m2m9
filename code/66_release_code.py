@@ -82,7 +82,10 @@ which claims the data do not support.
 ## Layout
 
 ```
-code/            all analysis scripts (Python and R), in the order they were run
+code/            analysis scripts, in the order they were run
+code/d_workspace/ the M4 (CellOracle) and M8 (decoupleR) pipeline, which was run in a second
+                  workspace; 18 file names exist in both trees and these copies are the ones
+                  that produced the submitted results
 results/         derived result tables underlying the figures and tables
 supplementary/   the 17 supplementary files as submitted (Supplementary Material 1-17)
 README.md        this file
@@ -222,64 +225,108 @@ def sha256(path):
 
 
 def build_tree():
-    if os.path.isdir(REL):
-        shutil.rmtree(REL)
-    os.makedirs(REL)
-    for sub in ("code", "results", "supplementary"):
-        os.makedirs(os.path.join(REL, sub))
+    """Build in place.
+
+    The sandbox intercepts bulk deletes (and refuses to rename a directory that another
+    handle has open), so nothing is ever removed: new content overwrites, and any file that
+    this run no longer produces is moved into `_superseded/`.
+    """
+    rel = os.path.abspath(REL)
+    if os.path.isdir(rel):
+        log("  building in place (nothing is deleted)")
+    for sub in ("code", "code/d_workspace", "results", "supplementary"):
+        os.makedirs(os.path.join(rel, *sub.split("/")), exist_ok=True)
+
+    expected = set()
 
     n_code = 0
-    for d in (SCRIPTS, os.path.join(r"D:\\workbuddy工作空间\\JAML深度研究", "scripts")):
-        if not os.path.isdir(d):
-            continue
-        for f in sorted(os.listdir(d)):
+    for f in sorted(os.listdir(SCRIPTS)):
+        if f.endswith(".py") and ".bak" not in f:
+            shutil.copy2(os.path.join(SCRIPTS, f), os.path.join(rel, "code", f))
+            expected.add("code/" + f)
+            n_code += 1
+    # M4/M8 pipeline lives in the D-drive workspace; 18 names exist in both trees and the
+    # D-drive copies are authoritative, so they are kept in their own folder.
+    n_d = 0
+    d_dir = r"D:\workbuddy工作空间\JAML深度研究\scripts"
+    if os.path.isdir(d_dir):
+        for f in sorted(os.listdir(d_dir)):
             if f.endswith(".py"):
-                shutil.copy2(os.path.join(d, f), os.path.join(REL, "code", f))
-                n_code += 1
+                shutil.copy2(os.path.join(d_dir, f), os.path.join(rel, "code", "d_workspace", f))
+                expected.add("code/d_workspace/" + f)
+                n_d += 1
+
     n_res = 0
     for f in KEY_RESULTS:
         src = os.path.join(RESULTS, f)
         if os.path.exists(src):
-            shutil.copy2(src, os.path.join(REL, "results", f))
+            shutil.copy2(src, os.path.join(rel, "results", f))
+            expected.add("results/" + f)
             n_res += 1
+
     n_sup = 0
     for f in sorted(os.listdir(SUP)):
         p = os.path.join(SUP, f)
         if os.path.isfile(p) and not f.endswith(".bak_review2"):
-            shutil.copy2(p, os.path.join(REL, "supplementary", f))
+            shutil.copy2(p, os.path.join(rel, "supplementary", f))
+            expected.add("supplementary/" + f)
             n_sup += 1
 
-    io.open(os.path.join(REL, "README.md"), "w", encoding="utf-8").write(
-        README.format(title=TITLE, version=VERSION, date=DATE))
-    io.open(os.path.join(REL, "DATA_SOURCES.md"), "w", encoding="utf-8").write(DATA_SOURCES)
-    io.open(os.path.join(REL, "LICENSE"), "w", encoding="utf-8").write(MIT.format(year=DATE[:4]))
-    io.open(os.path.join(REL, "CITATION.cff"), "w", encoding="utf-8").write(
-        CITATION.format(title=TITLE, version=VERSION, date=DATE))
-    io.open(os.path.join(REL, ".zenodo.json"), "w", encoding="utf-8").write(
-        ZENODO.format(title=TITLE, version=VERSION, date=DATE))
-    io.open(os.path.join(REL, ".gitignore"), "w", encoding="utf-8").write("__pycache__/\n*.pyc\n")
+    docs = {"README.md": README.format(title=TITLE, version=VERSION, date=DATE),
+            "DATA_SOURCES.md": DATA_SOURCES,
+            "LICENSE": MIT.format(year=DATE[:4]),
+            "CITATION.cff": CITATION.format(title=TITLE, version=VERSION, date=DATE),
+            ".zenodo.json": ZENODO.format(title=TITLE, version=VERSION, date=DATE),
+            ".gitignore": "__pycache__/\n*.pyc\n"}
+    for name, body in docs.items():
+        io.open(os.path.join(rel, name), "w", encoding="utf-8").write(body)
+        expected.add(name)
 
-    # checksums over everything except the sums file itself
+    # anything left over goes to _superseded/ rather than being deleted
+    moved = 0
+    for root, dirs, files in os.walk(rel):
+        dirs[:] = [d for d in dirs if d not in (".git", "_superseded")]
+        for f in files:
+            if f == "SHA256SUMS.txt":
+                continue
+            rp = os.path.relpath(os.path.join(root, f), rel).replace("\\", "/")
+            if rp not in expected:
+                dst = os.path.join(rel, "_superseded", rp.replace("/", os.sep))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                os.replace(os.path.join(root, f), dst)
+                moved += 1
+    if moved:
+        log("  %d superseded file(s) moved to _superseded/" % moved)
+
+    # checksums over everything except the sums file and the superseded pile
     lines, n_files = [], 0
-    for root, dirs, files in os.walk(REL):
-        dirs[:] = [d for d in dirs if d != ".git"]
+    for root, dirs, files in os.walk(rel):
+        dirs[:] = [d for d in dirs if d not in (".git", "_superseded")]
         for f in sorted(files):
             if f == "SHA256SUMS.txt":
                 continue
             p = os.path.join(root, f)
-            relp = os.path.relpath(p, REL).replace("\\", "/")
+            relp = os.path.relpath(p, rel).replace("\\", "/")
             lines.append("%s  %s" % (sha256(p), relp))
             n_files += 1
-    io.open(os.path.join(REL, "SHA256SUMS.txt"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
-    log("  code %d, derived results %d, supplementary %d, checksummed files %d"
-        % (n_code, n_res, n_sup, n_files))
+    io.open(os.path.join(rel, "SHA256SUMS.txt"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    log("  code %d (+%d in code/d_workspace), derived results %d, supplementary %d, checksummed files %d"
+        % (n_code, n_d, n_res, n_sup, n_files))
     return n_files
 
 
 def make_tarball():
     tar = REL + ".tar.gz"
+    skip = (os.sep + "_superseded", os.sep + ".git" + os.sep)
     with tarfile.open(tar, "w:gz") as t:
-        t.add(REL, arcname=os.path.basename(REL))
+        base = os.path.dirname(REL)
+        for root, dirs, files in os.walk(REL):
+            dirs[:] = [d for d in dirs if d not in ("_superseded", ".git")]
+            for f in sorted(files):
+                p = os.path.join(root, f)
+                if any(s in p for s in skip):
+                    continue
+                t.add(p, arcname=os.path.join(os.path.basename(REL), os.path.relpath(p, REL)))
     log("  wrote %s (%.1f MB)" % (os.path.basename(tar), os.path.getsize(tar) / 1e6))
     log("  sha256 %s" % sha256(tar))
     return tar
