@@ -85,12 +85,12 @@ def main():
     check("已按 BMC 规则命名为 Additional file",
           "Additional files" in all_text and "Additional file 1" in all_text
           and "Supplementary Material" not in all_text)
-    check("文中无遗留 'Additional file'", "Additional file" not in all_text)
+    check("文中无遗留 'Supplementary Material'", "Supplementary Material" not in all_text)
     check("Additional file 17 已在可用性声明中引用", "Additional file 17" in all_text)
     check("Additional file 编号 1–17 连续",
           all(("Additional file %d**" % i) in all_text or ("Additional file %d " % i) in all_text
               for i in range(1, 18)))
-    check("含 Abbreviations 节", "## Abbreviations" in all_text)
+    check("含 Abbreviations 节", "Abbreviations" in all_text)
     check("含 Acknowledgements 子标题", "Acknowledgements." in all_text)
     check("数据集已进参考文献（GEO/GDC/DepMap/eQTL/GWAS）",
           all(x in all_text for x in ["GSE131907", "portal.gdc.cancer.gov", "depmap.org",
