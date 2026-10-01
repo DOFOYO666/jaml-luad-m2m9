@@ -299,16 +299,28 @@ def build_en_md():
          + "**Corresponding author:** " + CORRESP + "\n\n"
          + "**Running title:** " + running + "\n\n---\n" + body)
 
-    # Figure 1 / Figure 2 legends must describe the merged panels that are supplied
+    # Figure legends must describe the merged panels that are actually supplied, and the
+    # numbers printed in Figure 7a must be attributed to the run they came from.  Verified
+    # against the source tables: Figure 1 = m3_jaml_cxadr_normalized + m3_jaml_cd4_subtypes;
+    # Figure 2 = cross_dataset_compartment + m8_gse127465_jaml_cxadr; Figure 7a =
+    # m4_tf_perturbation_summary.csv (3,013 genes, bagging = 20, 34 perturbable factors,
+    # randomized-control max 1.18e-3) while Table 4 / panel (b) use the final configuration
+    # and the paired control (global ceiling 9.59e-3).
     ops = [
-        ("Points are cell-type means; the x-axis is the fraction of positive cells.",
-         "(a) Points are cell-type means; the x-axis is the fraction of positive cells."),
+        # Figure 1
+        ("Mean normalized expression (log2(TPM+1)) and positivity for *JAML* and *CXADR* across ten author-annotated cell types in GSE131907 (208,506 cells; LUAD). Points are cell-type means; the x-axis is the fraction of positive cells.",
+         "(a) Mean normalized expression (log2(TPM+1)) and positivity for *JAML* and *CXADR* across ten author-annotated cell types in GSE131907 (208,506 cells; LUAD); points are cell-type means and the x-axis is the fraction of positive cells."),
         ("Panel b: *JAML* positivity across CD4-lineage subsets annotated by the authors (`Cell_subtype`).",
-         "(b) *JAML* positivity across CD4-lineage subsets annotated by the authors' `Cell_subtype` labels."),
-        ("Positivity of *JAML* and *CXADR* across eight compartments in GSE127465",
-         "(a) Positivity of *JAML* and *CXADR* across eight compartments in GSE127465"),
+         "(b) *JAML* mean expression (bars), annotated with the fraction of positive cells, across the CD4-lineage subsets defined by the authors' `Cell_subtype` labels."),
+        # Figure 2
+        ("Positivity of *JAML* and *CXADR* across eight compartments in GSE127465 (54,773 cells; treatment-naïve NSCLC; Zilionis et al. [8]) compared with GSE131907.",
+         "(a) Positivity of *JAML* and *CXADR* across the eight compartments, with the discovery (GSE131907) and replication (GSE127465; 54,773 cells; treatment-naïve NSCLC; Zilionis et al. [8]) values for the same compartment shown side by side."),
         ("Horizontal bars are positivity percentages; the discovery and replication values for the same compartment are shown side by side.",
-         "(b) Horizontal bars are positivity percentages; the discovery and replication values for the same compartment are shown side by side."),
+         "(b) The same replication data at the authors' own annotation granularity, separately resolving the key epithelial and myeloid compartments; the note 'few epithelial cells in this dataset' flags the small epithelial compartment discussed in the Limitations. Horizontal bars are positivity percentages."),
+        # Figure 7a — the master legend now describes the final network configuration, so the only
+        # JTM-specific change is the name of the supplementary table it points to (the master calls
+        # it "Additional file 7a", JTM calls it "Supplementary Material 9").
+        ("is in Additional file 7a.", "is in Supplementary Material 9."),
     ]
     for old, new in ops:
         t, applied = soft_replace(t, old, new, 1, "legend op")
@@ -558,6 +570,38 @@ Figure 1 与 Figure 2 的图注已改写为 (a)/(b) 结构，与合并后的版�
 1. **通讯作者信息**按主稿（BMC Cancer 投稿包）填写：`xingxinghuoshu@163.com`、ORCID `0009-0007-8106-0425`、Tel `+86-15989240414`、`No. 89 Taoyuan Road, Nanshan District, Shenzhen 518000`。如需修改，改 `manuscript_JTM.md` 题名页后重跑 `scripts/65`。
 2. **科室英文名已统一**：原 M2–M9 稿写 "Department of Respiratory Medicine, Shenzhen Nanshan People's Hospital"，与主稿题名页 "Department of Pulmonary and Critical Care Medicine, Shenzhen Nanshan District People's Hospital" 不一致；本包已统一为**主稿写法**，中文稿同步改为"呼吸与危重症医学科"。
 3. **Cover letter 不写日期**（投稿系统自带）；如需可在首行补。
+
+---
+
+## 六、代码发布物与 DOI（投稿系统会校验这一项）
+
+代码归档已备好两步之外的**全部内容**：
+
+```
+JAML_M2M9_code_release/            发布树（README / DATA_SOURCES / LICENSE(MIT，可改) /
+                                   CITATION.cff / .zenodo.json / SHA256SUMS.txt）
+   ├── code/                       79 个 C 盘工作区脚本
+   ├── code/d_workspace/           19 个 D 盘 M4/M8 脚本（同名 18 个，以 D 盘版本为准）
+   ├── results/                    10 个派生结果表 + Crossref 核验记录
+   └── supplementary/              Supplementary Material 1–17
+JAML_M2M9_code_release.tar.gz      1.1 MB，sha256 4033d0db…9a416（由 git 提交 83d4f37 产出）
+```
+
+**剩余两步需要你的账号**（本机无 GitHub 凭据、无 `gh` CLI，代码不作伪 DOI）：
+
+```
+cd "…\JAML_M2M9_code_release"
+git remote add origin https://github.com/<你的账号>/<仓库名>.git
+git branch -M main && git push -u origin main
+# Zenodo：用 GitHub 登录 → Settings → GitHub → 打开该仓库开关；
+#         回 GitHub 建 Release（tag v1.0.0）→ Zenodo 自动颁发 DOI。
+python scripts/67_finalise_review2.py --doi 10.5281/zenodo.XXXXXXX --url https://github.com/<你>/<仓库>
+```
+
+第 3 条命令会把仓库地址与 DOI 写回英文母稿、中文母稿的可用性声明，随后重跑
+`scripts/49`（中英母稿 docx）、`scripts/64`（本包）、`scripts/65`（本包 docx）即全部同步。
+在此之前，稿件中的表述为"内容相同的归档（release 1.0.0）正存入公共仓库；其 DOI 一经取得即在此处引用"
+——**如实描述当前状态，不预留假 DOI**。
 """
 
 
