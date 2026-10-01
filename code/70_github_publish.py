@@ -483,13 +483,13 @@ def do_final_check():
             log(BAD + "%-8s 找不到 %s" % (name, rel))
             continue
         t = open(p, encoding="utf-8").read()
-        i = t.find("10.5281/zenodo.")
+        m = re.search(r"10\.5281/zenodo\.\d+", t)
         have_url = "github.com/" in t
-        if i == -1:
+        if m is None:
             log(WARN + "%-8s 还没有 DOI（说明 --writeback 尚未跑：此时稿件里还是"
                        "'正存入公共仓库…'的旧话）" % name)
         else:
-            doi_found = t[i:i + 60].split()[0].rstrip(").,;，。")
+            doi_found = m.group(0)
             log(OK + "%-8s DOI = %s   仓库地址 = %s"
                 % (name, doi_found, "已写入" if have_url else "未见"))
 
