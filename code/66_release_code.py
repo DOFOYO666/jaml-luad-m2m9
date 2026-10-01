@@ -39,6 +39,12 @@ TITLE = ("Compartmentally separated JAML and CXADR in lung adenocarcinoma: myelo
 VERSION = "1.0.0"
 DATE = datetime.date.today().isoformat()
 
+# Filled in by --url / --doi once the repository and the archived DOI exist.  Passing no
+# arguments leaves the metadata honest about their absence rather than inventing either.
+DEFAULT_REPO_URL = "TO BE COMPLETED WHEN THE REPOSITORY URL IS KNOWN"
+REPO_URL = DEFAULT_REPO_URL
+ARCHIVE_DOI = ""
+
 KEY_RESULTS = [
     "m2_tcga_jaml_partial_corr.csv", "m2_marker_specificity.csv", "m2_marker_profile_similarity.csv",
     "m2_tcga_stage_jaml.csv", "cross_dataset_compartment_pct.csv",
@@ -186,7 +192,7 @@ keywords:
   - deconvolution
   - transcription factor perturbation
   - CellOracle
-repository-code: "TO BE COMPLETED WHEN THE REPOSITORY URL IS KNOWN"
+repository-code: "{url}"
 """
 
 ZENODO = """{{
@@ -275,12 +281,30 @@ def build_tree():
     docs = {"README.md": README.format(title=TITLE, version=VERSION, date=DATE),
             "DATA_SOURCES.md": DATA_SOURCES,
             "LICENSE": MIT.format(year=DATE[:4]),
-            "CITATION.cff": CITATION.format(title=TITLE, version=VERSION, date=DATE),
+            "CITATION.cff": CITATION.format(title=TITLE, version=VERSION, date=DATE, url=REPO_URL),
             ".zenodo.json": ZENODO.format(title=TITLE, version=VERSION, date=DATE),
             ".gitignore": "__pycache__/\n*.pyc\n_superseded/\n*.bak_*\n"}
     for name, body in docs.items():
         io.open(os.path.join(rel, name), "w", encoding="utf-8").write(body)
         expected.add(name)
+
+    # record the real coordinates once they exist (--url / --doi)
+    if ARCHIVE_DOI:
+        import json
+        p = os.path.join(rel, ".zenodo.json")
+        d = json.load(io.open(p, encoding="utf-8"))
+        d["related_identifiers"] = [{"identifier": ARCHIVE_DOI, "relation": "isIdenticalTo",
+                                     "scheme": "doi", "resource_type": "software"}]
+        io.open(p, "w", encoding="utf-8").write(json.dumps(d, ensure_ascii=False, indent=2) + "\n")
+        log("  .zenodo.json related_identifiers <- %s" % ARCHIVE_DOI)
+    if REPO_URL != DEFAULT_REPO_URL:
+        p = os.path.join(rel, "README.md")
+        t = io.open(p, encoding="utf-8").read()
+        head, rest = t.split("\n", 1)
+        line = "\n**Repository:** %s" % REPO_URL + (
+            "  \n**Archived DOI:** %s" % ARCHIVE_DOI if ARCHIVE_DOI else "")
+        io.open(p, "w", encoding="utf-8").write(head + line + "\n" + rest)
+        log("  README.md <- repository URL%s" % (" and DOI" if ARCHIVE_DOI else ""))
 
     # anything left over goes to _superseded/ rather than being deleted
     moved = 0
@@ -377,6 +401,11 @@ AVAIL_NEW_EN = ("All analysis scripts, the derived result tables underlying ever
 
 
 def main():
+    global REPO_URL, ARCHIVE_DOI
+    if "--url" in sys.argv:
+        REPO_URL = sys.argv[sys.argv.index("--url") + 1]
+    if "--doi" in sys.argv:
+        ARCHIVE_DOI = sys.argv[sys.argv.index("--doi") + 1]
     log("[1] release tree")
     n = build_tree()
     log("[2] tarball")
@@ -391,6 +420,9 @@ def main():
   git branch -M main
   git push -u origin main
 
+  # 1b. once the repository exists, record its URL inside the released metadata and rebuild:
+  python scripts/66_release_code.py --url https://github.com/<your-account>/<repo>
+
   # 2a. DOI via GitHub release (recommended, gives a versioned DOI):
   #     - sign in to https://zenodo.org with GitHub, open Settings -> GitHub,
   #       toggle ON the repository you just pushed;
@@ -399,11 +431,18 @@ def main():
 
   # 2b. or DOI by direct upload: https://zenodo.org/uploads/new
   #     upload  %s
-  #     (metadata is pre-filled from .zenodo.json inside the archive)
+  #     (metadata is pre-filled from .zenodo.json inside the archive; the tarball checksum
+  #      is in %s)
 
   # 3. write the DOI back into both manuscripts and rebuild the docx:
   python scripts/67_finalise_review2.py --doi 10.5281/zenodo.XXXXXXX --url https://github.com/<you>/<repo>
-""" % (REL, VERSION, os.path.basename(REL) + ".tar.gz"))
+  python scripts/49_build_new_docx.py
+  python scripts/64_build_jtm_pkg.py
+  python scripts/65_build_jtm_docx.py
+
+  # 3b. record the DOI in the release tree too, then commit and push the update:
+  python scripts/66_release_code.py --url https://github.com/<you>/<repo> --doi 10.5281/zenodo.XXXXXXX
+""" % (REL, VERSION, os.path.basename(REL) + ".tar.gz", os.path.basename(REL) + ".tar.gz.sha256"))
 
 
 if __name__ == "__main__":
