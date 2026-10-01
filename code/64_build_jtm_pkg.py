@@ -532,7 +532,8 @@ README_TMPL = """# 《M2–M9 深化研究》Journal of Translational Medicine �
 | 摘要 | 结构式四标题 Background / Methods / Results / Conclusions | 一致（329 词，≤ 350 上限） |
 | 关键词 | 3–10 个 | 11 → 10（删 "target triage"） |
 | 正文章节 | Introduction → Methods → Results → Discussion → Conclusions | 一致；Limitations 作为独立小节保留 |
-| 参考文献作者 | **> 3 位时列前 3 位 + et al.**（1 篇 JTM 论文 49 条 `element-citation` 中，39 条带 `<etal/>` 者**全部**为 3 名） | 归一了原稿中列 4–5 位作者的 3 条（ref 2 / 10 / 18），两稿同步 |
+| 参考文献作者 | **> 3 位时列前 3 位 + et al.**（1 篇 JTM 论文 49 条 `element-citation` 中，39 条带 `<etal/>` 者**全部**为 3 名） | 全部条目均按此规则：> 3 位作者列前 3 位 + et al.，作者数 ≤ 3 时完整列出 |
+| 参考文献编号 | Vancouver，按正文首次出现顺序 | 本次修订新增 26 条文献，编号已整体重排；正文引用与文献表**双向对账**通过（无未引用条目、无悬空引用），并逐条经 Crossref DOI 反查 |
 | 补充材料命名 | 一律 **"Supplementary Material N"**（12 篇抽样中 "Additional file" 出现 **0** 次） | "Additional file N" → "Supplementary Material 1–17"，文件按 `SupplementaryMaterialNN_*.csv` 重命名，正文引用同步 |
 | 后置章节顺序 | Conclusions → Electronic supplementary material → Acknowledgements → Author contributions → Funding → Data availability → Declarations → Abbreviations → References | Declarations 四小标题采用 JTM 原文措辞；References 置于声明之后 |
 | 图 | 图件单独上传、图注随正文 | 15 个图件**合并为图注所述的 9 张图**；图注集中于 References 之后的 "Figure legends" |
