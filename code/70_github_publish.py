@@ -26,6 +26,7 @@
 """
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -166,6 +167,66 @@ def _set_git_proxy(value):
 def _g():
     """git 可执行文件；找不到时退回裸 "git"（由 run() 给出友好提示）。"""
     return GIT or "git"
+
+
+def _norm_url(u):
+    """清洗用户粘贴的仓库地址。
+
+    实测用户会从占位符 `<你的用户名>` 里把尖括号一起带出来，也会带上 `.git` 后缀；
+    这两者在 cmd 里 `<` 还是**输入重定向**、会直接报"文件名、目录名或卷标语法不正确"。
+    """
+    if not u:
+        return u
+    v = u.strip().strip("<>").strip()
+    while v.endswith("/"):
+        v = v[:-1]
+    if v.endswith(".git"):
+        v = v[:-4]
+    return v
+
+
+def _norm_doi(d):
+    """清洗并粗校验 DOI。"""
+    if not d:
+        return d
+    v = d.strip().strip("<>").strip().rstrip(".,;，。")
+    if v.lower().startswith("doi:"):
+        v = v[4:].strip()
+    if v.lower().startswith("https://doi.org/"):
+        v = v[len("https://doi.org/"):]
+    if not re.match(r"^10\.\d{4,9}/\S+$", v):
+        log(WARN + "'%s' 看起来不像合法 DOI（应为 10.xxxx/…）；仍会按你给的值写入，请自行确认" % v)
+    return v
+
+
+def _norm_url(u):
+    """清洗用户粘贴的仓库地址。
+
+    实测用户会从占位符 `<你的用户名>` 里把尖括号一起带出来，也会带上 `.git` 后缀；
+    这两者在 cmd 里 `<` 还是**输入重定向**、会直接报"文件名、目录名或卷标语法不正确"。
+    """
+    if not u:
+        return u
+    v = u.strip().strip("<>").strip()
+    while v.endswith("/"):
+        v = v[:-1]
+    if v.endswith(".git"):
+        v = v[:-4]
+    return v
+
+
+def _norm_doi(d):
+    """清洗并粗校验 DOI。"""
+    if not d:
+        return d
+    v = d.strip().strip("<>").strip().rstrip(".,;，。")
+    if v.lower().startswith("doi:"):
+        v = v[4:].strip()
+    if v.lower().startswith("https://doi.org/"):
+        v = v[len("https://doi.org/"):]
+    if not re.match(r"^10\.\d{4,9}/\S+$", v):
+        log(WARN + "'%s' 看起来不像合法 DOI（应为 10.xxxx/…）；仍会按你给的值写入，请自行确认" % v)
+    return v
 
 
 class _Missing:
@@ -498,6 +559,30 @@ def main():
             log("\n下一步：重跑带 --url 的推送命令")
             return
     proxy = sys.argv[sys.argv.index("--proxy") + 1] if "--proxy" in sys.argv else None
+
+    # 统一清洗用户输入（去掉 <...>、结尾 /、.git、doi: 前缀等），并告知被改了什么
+    if url:
+        u2 = _norm_url(url)
+        if u2 != url:
+            log("注意：仓库地址已规范化为 %s" % u2)
+            url = u2
+    if doi:
+        d2 = _norm_doi(doi)
+        if d2 != doi:
+            log("注意：DOI 已规范化为 %s" % d2)
+            doi = d2
+
+    # 统一清洗用户输入（去掉 <...>、结尾 /、.git、doi: 前缀等），并告知被改了什么
+    if url:
+        u2 = _norm_url(url)
+        if u2 != url:
+            log("注意：仓库地址已规范化为 %s" % u2)
+            url = u2
+    if doi:
+        d2 = _norm_doi(doi)
+        if d2 != doi:
+            log("注意：DOI 已规范化为 %s" % d2)
+            doi = d2
     if "--writeback" in sys.argv:
         if not (url and doi):
             raise SystemExit("--writeback 需要同时给 --url 和 --doi")

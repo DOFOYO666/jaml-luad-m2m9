@@ -281,7 +281,9 @@ CN_AVAIL_CANDIDATES = [
 
 def normalize_master_cn(t):
     """Return the CN master text with the final availability wording."""
-    if CN_AVAIL_FINAL in t:
+    # 若文中已出现真实 DOI（`67 --doi` 的成果），说明可用性声明已定稿，不要再改措辞 ——
+    # 否则 `--writeback` 跑到这一步会因为"认不出新措辞"而中止（实测踩过）。
+    if CN_AVAIL_FINAL in t or "10.5281/zenodo." in t:
         return t, False
     for old in CN_AVAIL_CANDIDATES:
         if t.count(old) == 1:
@@ -594,7 +596,7 @@ JAML_M2M9_code_release.tar.gz      约 1.1 MB。**校验值每次重建都会变
 **剩余两步需要你的账号**（本机无 GitHub 凭据、无 `gh` CLI，代码不作伪 DOI）：
 
 ```
-cd "…\JAML_M2M9_code_release"
+cd "…/JAML_M2M9_code_release"
 git remote add origin https://github.com/<你的账号>/<仓库名>.git
 git branch -M main && git push -u origin main
 # Zenodo：用 GitHub 登录 → Settings → GitHub → 打开该仓库开关；
