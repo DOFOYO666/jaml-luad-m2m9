@@ -13,6 +13,11 @@
        python scripts/70_github_publish.py --url https://github.com/<你的用户名>/jaml-luad-m2m9
      （推送时若弹出 Git Credential Manager 窗口，用户名填你的 GitHub 用户名，密码处粘贴 PAT）
 
+  2b) 若推送报"连接被重置"（大陆网络常见）——先看网络诊断，再给 git 配代理：
+       python scripts/70_github_publish.py --net
+       python scripts/70_github_publish.py --url https://github.com/<你的用户名>/jaml-luad-m2m9 --proxy http://127.0.0.1:29290
+       python scripts/70_github_publish.py --proxy none          # 用完清掉
+
   3) 从 Zenodo 拿到 DOI 之后，一条命令完成"写回稿件 + 重建全部交付物 + 再推送一次"：
        python scripts/70_github_publish.py --url https://github.com/<你的用户名>/jaml-luad-m2m9 \
             --doi 10.5281/zenodo.1234567 --writeback
@@ -24,6 +29,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 
 def _init_console():
@@ -83,6 +89,78 @@ OK, WARN, BAD = "  [OK]  ", "  [注意] ", "  [缺]  "
 
 def log(*a):
     print(*a, flush=True)
+
+
+def net_probe(quiet=False):
+    """纯 Python 探测网络可达性与系统代理。
+
+    不用 ping / curl / Test-NetConnection —— 那些在别的 shell 里没有；
+    socket 直连在 PowerShell / Git Bash / cmd 下行为一致。
+    """
+    import socket
+    log("\n[网络] 目标站点 443 端口连通性")
+    results = {}
+    for host in ("github.com", "zenodo.org"):
+        try:
+            t0 = time.time()
+            with socket.create_connection((host, 443), timeout=8):
+                dt = time.time() - t0
+            results[host] = True
+            log(OK + "%-12s 可连通（%.1f 秒）" % (host, dt))
+        except Exception as e:
+            results[host] = False
+            log(BAD + "%-12s 连不上：%s" % (host, "%s: %s" % (type(e).__name__, str(e)[:60])))
+    log("\n[网络] 系统代理设置")
+    proxy = None
+    if os.name == "nt":
+        try:
+            import winreg
+            k = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                               r"Software\Microsoft\Windows\CurrentVersion\Internet Settings")
+            enable = winreg.QueryValueEx(k, "ProxyEnable")[0]
+            try:
+                server = winreg.QueryValueEx(k, "ProxyServer")[0]
+            except FileNotFoundError:
+                server = "(未设置)"
+            try:
+                pac = winreg.QueryValueEx(k, "AutoConfigURL")[0]
+            except FileNotFoundError:
+                pac = "(未设置)"
+            log(OK + "ProxyEnable = %s    ProxyServer = %s    AutoConfigURL = %s"
+                % (enable, server, pac))
+            if enable and server and server != "(未设置)":
+                s = str(server)
+                if not s.lower().startswith("http"):
+                    s = "http://" + s
+                proxy = s          # 归一化后再用，避免拼出 http://http://...
+        except Exception as e:
+            log(WARN + "读系统代理失败：%s" % e)
+    gp = run([_g(), "config", "--global", "--get", "http.proxy"]).stdout.strip()
+    log((OK if gp else WARN) + "git 自己的 http.proxy = %s" % (gp or "(未设置)"))
+    if proxy and not gp:
+        log("\n" + WARN + "关键线索：系统有代理（%s）但 git 没配 → git 是直连，所以被重置。" % proxy)
+        log("      正解：给 git 配上同一个代理后重试（把端口换成你实际看到的）：")
+        log('      <本脚本> --url <仓库地址> --proxy %s' % proxy)
+        log("      用完后清掉： <本脚本> --proxy none")
+    if not results.get("github.com") and not proxy:
+        log("\n" + BAD + "github.com 直连不通且没有系统代理 → 属于网络限制，三条出路：")
+        log("      ① 开加速/代理后重试（推荐，见上面那条命令）")
+        log("      ② 换网络（手机热点常常能通）后再 push")
+        log("      ③ 放弃 GitHub，改用 Zenodo 直传上传归档拿 DOI（手册附录 B，不需要 push）")
+    return results
+
+
+def _set_git_proxy(value):
+    """给 git 配/清 http(s) 代理。value 为 'none'/'' 时清除。"""
+    if value in (None, "", "none", "None"):
+        for k in ("http.proxy", "https.proxy"):
+            run([_g(), "config", "--global", "--unset", k])
+        log(OK + "已清除 git 的 http/https 代理")
+        return None
+    for k in ("http.proxy", "https.proxy"):
+        run([_g(), "config", "--global", k, value], check=True)
+    log(OK + "已给 git 设置代理：%s（http 与 https 都设了）" % value)
+    return value
 
 
 def _g():
@@ -175,6 +253,8 @@ def do_check():
     else:
         log(WARN + "尚未配置 remote —— 网页建好空仓库后跑步骤 2 的命令即可")
 
+    net_probe()
+
     log("\n[5] 网页操作是否已完成的判断依据")
     log("      · 仓库页能看到 %d 个文件 → 推送已完成" % len(tracked))
     log("      · Zenodo → Settings → GitHub 里该仓库开关为 ON → 可以发 Release 了")
@@ -185,13 +265,15 @@ def do_check():
 
 
 # --------------------------------------------------------------- push to git --
-def do_push(url):
+def do_push(url, proxy=None):
     if not git_ok():
         raise SystemExit("本机没有 git，先安装 Git for Windows")
 
     log("=" * 78)
     log("步骤 2：配置身份 → 加 remote → 切到 main → 推送")
     log("=" * 78)
+    if proxy:
+        _set_git_proxy(proxy)
 
     r = run([_g(), "config", "--global", "user.name"])
     if not r.stdout.strip():
@@ -219,10 +301,16 @@ def do_push(url):
     r = subprocess.run([_g(), "push", "-u", "origin", "main"], cwd=REPO)
 
     if r.returncode != 0:
-        log("\n" + BAD + "推送失败。按下面三条自查：")
-        log("      1. 报 'password authentication was removed' → 密码处要粘贴 PAT（不是账号密码）")
-        log("      2. 报 'Permission denied (publickey)' → 你用的是 SSH 地址，但没配公钥；改回 https:// 地址")
-        log("      3. 报 'remote origin already exists' / 'rejected' → 建仓时勾了 README，请删掉该仓库重建一个空仓库")
+        # 先把网络层查清楚，再给建议 —— 连接被重置 vs 认证失败 vs 仓库冲突，处理方式完全不同
+        net_probe()
+        log("\n" + BAD + "推送失败。按报错原文对号入座：")
+        log("      含 'Connection was reset' / 'unable to access' / 'Failed to connect' / 超时"
+            " → 网络问题（不是账号问题）：看上面 [网络] 两节，多半要给 git 配代理，"
+            "或换网络，或改用 Zenodo 直传（手册附录 B）")
+        log("      含 'password authentication was removed' → 密码处要粘贴 PAT（不是账号密码）")
+        log("      含 'Permission denied (publickey)' → 你用了 SSH 地址但没配公钥；改回 https:// 地址")
+        log("      含 'rejected' / 'fetch first' → 建仓时勾了 README；删掉该仓库，重建一个空仓库")
+        log("      含 'Repository not found' → 仓库名或用户名写错，或仓库是 Private 而令牌没勾 repo 权限")
         raise SystemExit(1)
 
     local = run([_g(), "rev-parse", "HEAD"], cwd=REPO).stdout.strip()
@@ -394,6 +482,15 @@ def main():
         return
     url = sys.argv[sys.argv.index("--url") + 1] if "--url" in sys.argv else None
     doi = sys.argv[sys.argv.index("--doi") + 1] if "--doi" in sys.argv else None
+    if "--net" in sys.argv:
+        net_probe()
+        return
+    if "--proxy" in sys.argv:
+        _set_git_proxy(sys.argv[sys.argv.index("--proxy") + 1])
+        if not url:
+            log("\n下一步：重跑带 --url 的推送命令")
+            return
+    proxy = sys.argv[sys.argv.index("--proxy") + 1] if "--proxy" in sys.argv else None
     if "--writeback" in sys.argv:
         if not (url and doi):
             raise SystemExit("--writeback 需要同时给 --url 和 --doi")
@@ -403,7 +500,7 @@ def main():
             raise SystemExit("--record-only 需要 --url")
         do_record_only(url)
     elif url:
-        do_push(url)
+        do_push(url, proxy)
     else:
         log(__doc__)
 
