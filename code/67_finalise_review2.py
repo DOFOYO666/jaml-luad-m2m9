@@ -33,11 +33,9 @@ DOC_README = os.path.join(PKG, "README_投稿说明.md")
 DOC_REVIEW = os.path.join(PKG, "审稿意见与逐条修改说明_第二轮.md")
 DOC_JOURNAL = os.path.join(PKG, "投稿期刊推荐.md")
 
-PLACEHOLDER_EN = ("An identical archive (release 1.0.0) is being deposited in a public repository; "
-                  "its DOI will be quoted here once issued, and the archive remains available from "
-                  "the corresponding author on reasonable request in the interim.")
-PLACEHOLDER_CN = ("内容相同的归档（release 1.0.0）正存入公共仓库；其 DOI 一经取得即在此处引用，"
-                  "在此之前可向通讯作者索取。")
+# The Availability sections are written in full by scripts/74_apply_jtm_guidelines.py in the
+# journal's prescribed wording. The placeholders that used to live here were retired on
+# 2026-10-02: that is why set_doi() verifies instead of patching (see its docstring).
 
 
 def log(*a):
@@ -119,20 +117,32 @@ def update_facts():
 
 
 def set_doi(doi, url):
-    log("[2] wire the repository DOI into the manuscripts")
-    cite_en = ("An identical archive (release 1.0.0) is openly available at %s (DOI: %s) and as "
-               "Supplementary Material 17; the archive also remains available from the "
-               "corresponding author on reasonable request." % (url, doi))
-    cite_cn = ("内容相同的归档（release 1.0.0）已在 %s 公开发布（DOI：%s），并同时作为补充材料 17 提供；"
-               "亦可向通讯作者索取。" % (url, doi))
-    for path, old, new in ((EN, PLACEHOLDER_EN, cite_en), (CN, PLACEHOLDER_CN, cite_cn)):
-        sub_once(path, old, new, os.path.basename(path) + " :: DOI")
-    # the JTM manuscript is generated from EN, so regenerate it rather than patching it by hand
+    """Verify -- do NOT rewrite -- that the repository DOI is wired into both manuscripts.
+
+    This function used to patch the two Availability sections from a stored placeholder. Round 5
+    (scripts/74_apply_jtm_guidelines.py) rewrote them in the journal's prescribed wording, so the
+    placeholder no longer exists and patching them from here would now either abort (0 matches)
+    or re-insert the retired "available from the corresponding author" sentence. The write-back
+    path in scripts/70 calls this command, so it must succeed and be idempotent when the DOI is
+    already present. Patching is scripts/74's job; this checks its work.
+    """
+    log("[2] verify the repository DOI is wired into the manuscripts")
+    if not doi.startswith("10."):
+        log("  WARNING: '%s' does not look like a DOI" % doi)
+    missing = []
+    for path in (EN, CN):
+        t = io.open(path, encoding="utf-8").read()
+        has_doi, has_url = doi in t, url in t
+        log("  %-16s DOI: %-5s URL: %-5s" % (os.path.basename(path), has_doi, has_url))
+        if not (has_doi and has_url):
+            missing.append(os.path.basename(path))
+    if missing:
+        raise SystemExit("DOI/URL not present in: %s\n"
+                         "  -> rewrite the Availability sections with scripts/74_apply_jtm_guidelines.py\n"
+                         "     and re-run the write-back" % ", ".join(missing))
     if os.path.exists(JTM_MD):
         log("  note: manuscript_JTM.md is generated from the EN master - re-run scripts/64 then 65")
         log("        (and scripts/49 for the companion docx pair)")
-    if not doi.startswith("10."):
-        log("  WARNING: '%s' does not look like a DOI" % doi)
 
 
 def main():
